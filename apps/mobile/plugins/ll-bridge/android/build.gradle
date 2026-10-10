@@ -1,0 +1,35 @@
+ext {
+    capacitorName = 'll-bridge'
+    publishFolder = 'android'
+    group = "com.ladlelink.plugins"
+}
+
+apply plugin: 'com.android.library'
+
+android {
+    namespace "com.ladlelink.plugins.llbridge"
+    compileSdk project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 35
+    defaultConfig {
+        minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 23
+        targetSdkVersion project.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 35
+        versionCode 1
+        versionName "1.0"
+    }
+    lintOptions {
+        abortOnError false
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':capacitor-android')
+    implementation "androidx.documentfile:documentfile:1.0.1"
+}

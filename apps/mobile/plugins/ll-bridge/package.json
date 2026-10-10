@@ -1,0 +1,30 @@
+{
+  "name": "@ladlelink/ll-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/esm/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "type": "module",
+  "files": [
+    "android/",
+    "dist/"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "test": "echo 'no ll-bridge unit tests'"
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/core": "^7.2.0",
+    "typescript": "^5.8.2"
+  },
+  "capacitor": {
+    "android": {
+      "src": "android"
+    }
+  }
+}

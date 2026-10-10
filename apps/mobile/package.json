@@ -1,0 +1,24 @@
+{
+  "name": "@ladlelink/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Capacitor Android shell for LadleLink",
+  "scripts": {
+    "sync": "npx cap sync android",
+    "copy": "npx cap copy android",
+    "open": "npx cap open android",
+    "add:android": "npx cap add android",
+    "test": "echo 'no mobile unit tests'"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.2.0",
+    "@capacitor/app": "^7.0.1",
+    "@capacitor/core": "^7.2.0",
+    "@capacitor/preferences": "^7.0.1",
+    "@ladlelink/ll-bridge": "*"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.2.0",
+    "typescript": "^5.8.2"
+  }
+}

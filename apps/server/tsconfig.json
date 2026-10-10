@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": ["node"]
+  },
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../../packages/types" },
+    { "path": "../../packages/units" },
+    { "path": "../../packages/scaling" },
+    { "path": "../../packages/parser" },
+    { "path": "../../packages/url-guard" }
+  ]
+}

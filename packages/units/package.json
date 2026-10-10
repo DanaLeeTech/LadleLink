@@ -1,0 +1,27 @@
+{
+  "name": "@ladlelink/units",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "mine-fndds": "node scripts/mine-fndds.mjs",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@ladlelink/types": "*"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.9",
+    "xlsx": "^0.18.5"
+  }
+}

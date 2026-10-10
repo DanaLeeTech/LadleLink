@@ -1,0 +1,26 @@
+{
+  "name": "ladlelink",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first recipe manager with portion scaling and URL import",
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "apps/mobile/plugins/*"
+  ],
+  "scripts": {
+    "build:packages": "npm run build -w @ladlelink/types && npm run build -w @ladlelink/units && npm run build -w @ladlelink/scaling && npm run build -w @ladlelink/parser && npm run build -w @ladlelink/url-guard && npm run build -w @ladlelink/ll-bridge",
+    "build": "npm run build:packages && npm run build -w @ladlelink/web && npm run build -w @ladlelink/server",
+    "build:mobile": "npm run build:packages && npm run build:capacitor -w @ladlelink/web && npm run sync -w @ladlelink/mobile",
+    "dev": "npm run build:packages && concurrently -n server,web -c blue,green \"npm run dev -w @ladlelink/server\" \"npm run dev -w @ladlelink/web\"",
+    "test": "npm run build:packages && npm run test -w @ladlelink/units && npm run test -w @ladlelink/scaling && npm run test -w @ladlelink/parser && npm run test -w @ladlelink/url-guard",
+    "start": "npm run start -w @ladlelink/server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.8.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,40 @@
+node_modules/
+dist/
+build/
+data/
+packages/units/data/*.xlsx
+*.db
+.env
+.DS_Store
+coverage/
+*.log
+apps/web/dist/
+apps/server/dist/
+packages/*/dist/
+apps/mobile/plugins/ff-bridge/dist/
+apps/mobile/android/.gradle/
+apps/mobile/android/**/build/
+apps/mobile/android/local.properties
+apps/mobile/android/capacitor-cordova-android-plugins/
+apps/mobile/android/app/src/main/assets/public/
+apps/mobile/android/app/src/main/assets/capacitor.config.json
+apps/mobile/android/app/src/main/assets/capacitor.plugins.json
+.vite/
+*.tsbuildinfo
+
+# Deployment glue and remote symlinks live on Bort only (never pushed to GitHub)
+deploy/
+remote/
+
+# Playwright/browser verification scratch output
+.playwright-mcp/
+
+# Internal notes, tooling, and machine-local data (never published)
+AGENTS.md
+docs/
+scripts/
+.agents/
+.cursor/
+opencode.json
+skills-lock.json
+*.traineddata

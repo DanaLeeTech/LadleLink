@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">LadleLink</string>
+    <string name="title_activity_main">LadleLink</string>
+    <string name="package_name">com.ladlelink.app</string>
+    <string name="custom_url_scheme">com.ladlelink.app</string>
+</resources>

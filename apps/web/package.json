@@ -1,0 +1,44 @@
+{
+  "name": "@ladlelink/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json && vite build",
+    "build:demo": "tsc -p tsconfig.json && FF_DEMO_BUILD=1 vite build",
+    "build:capacitor": "tsc -p tsconfig.json && FF_CAPACITOR_BUILD=1 vite build",
+    "preview": "vite preview",
+    "test": "tsx --test src/lib/recipe-card-payload.test.ts src/lib/demo-url-import.test.ts src/lib/recipe-card-import.test.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@capacitor/app": "^7.0.1",
+    "@capacitor/core": "^7.2.0",
+    "@ladlelink/ll-bridge": "file:../mobile/plugins/ll-bridge",
+    "@ladlelink/parser": "*",
+    "@ladlelink/scaling": "*",
+    "@ladlelink/types": "*",
+    "@ladlelink/units": "*",
+    "idb": "^8.0.2",
+    "jsqr": "^1.4.0",
+    "png-chunk-text": "^1.0.0",
+    "png-chunks-encode": "^1.0.0",
+    "png-chunks-extract": "^1.0.0",
+    "qrcode": "^1.5.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.4.0",
+    "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/png-chunk-text": "^1.0.3",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tsx": "^4.23.15",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.2"
+  }
+}
