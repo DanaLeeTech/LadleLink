@@ -1,7 +1,7 @@
 node_modules/
 dist/
 build/
-data/
+/data/
 packages/units/data/*.xlsx
 *.db
 .env
