@@ -108,6 +108,12 @@ const HAND_PIECE_OVERRIDES: PieceWeightEntry[] = [
     ],
     grams: { small: 120, medium: 150, large: 200 },
   },
+  // Generated key is misspelled "water_chesnut"; also answer to the correct spelling.
+  {
+    key: "water_chesnut",
+    aliases: ["water chesnut", "water chestnut", "water chestnuts"],
+    grams: { small: 7.5, medium: 10, large: 12.5 },
+  },
   {
     key: "ginger",
     aliases: ["ginger", "fresh ginger", "ginger root"],

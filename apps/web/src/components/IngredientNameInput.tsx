@@ -13,7 +13,9 @@ type SuggestionGroup =
   | "Herbs & aromatics"
   | "Protein"
   | "Dairy"
+  | "Nuts & seeds"
   | "Pantry"
+  | "Sauces & condiments"
   | "Seasonings"
   | "Other";
 
@@ -28,7 +30,9 @@ const GROUP_ORDER: SuggestionGroup[] = [
   "Herbs & aromatics",
   "Protein",
   "Dairy",
+  "Nuts & seeds",
   "Pantry",
+  "Sauces & condiments",
   "Seasonings",
   "Other",
 ];
@@ -132,8 +136,9 @@ const PRODUCE_GROUP_BY_KEY: Record<string, SuggestionGroup> = {
 };
 
 const PANTRY_BY_GROUP: Partial<Record<SuggestionGroup, string[]>> = {
-  Protein: ["chicken", "beef", "pork", "eggs", "chicken breast"],
+  Protein: ["chicken", "beef", "pork", "chicken breast"],
   Dairy: ["butter", "milk", "cream", "cheese", "yogurt", "sour cream", "parmesan"],
+  Vegetables: ["water chestnut"],
   Pantry: [
     "flour",
     "all-purpose flour",
@@ -165,46 +170,162 @@ const PANTRY_BY_GROUP: Partial<Record<SuggestionGroup, string[]>> = {
     "salt",
     "black pepper",
     "spice",
-    "soy sauce",
     "lemon juice",
     "garlic powder",
     "onion powder",
     "paprika",
     "cumin",
-    "oregano",
-    "thyme",
-    "basil",
     "chili flakes",
     "red pepper flakes",
   ],
   "Herbs & aromatics": [
     "parsley",
-    "cilantro",
     "coriander",
     "dill",
     "rosemary",
     "sage",
     "mint",
     "chives",
+    "basil",
+    "oregano",
+    "thyme",
   ],
 };
 
-/** Word-boundary-ish match so short stems don't hit unrelated labels. */
+/** Hidden duplicate labels → the label kept in the dropdown (lower-case display form). */
+const DROPDOWN_ALIASES: Record<string, string> = {
+  "honeydew melon": "honeydew",
+  "kiwi fruit": "kiwi",
+  beet: "beetroot",
+  beets: "beetroot",
+  "brussels sprouts": "brussels sprout",
+  "celery root": "celeriac",
+  chile: "chilli",
+  chili: "chilli",
+  courgette: "zucchini",
+  aubergine: "eggplant",
+  pepper: "capsicum",
+  peppers: "capsicum",
+  scallion: "spring onion",
+  "green onion": "spring onion",
+  "fennel bulb": "fennel",
+  cob: "corn",
+  cilantro: "coriander",
+  "ginger root": "ginger",
+  eggs: "egg",
+  "pork bacon": "bacon",
+  shrimp: "prawn",
+  livers: "liver",
+  "cocoa powder": "cocoa",
+  artichokes: "artichoke",
+  berries: "berry",
+  bluberries: "blueberry",
+  blueberries: "blueberry",
+  carrots: "carrot",
+  cherries: "cherry",
+  grapes: "grape",
+  "green beans": "green bean",
+  leeks: "leek",
+  mushrooms: "mushroom",
+  olives: "olive",
+  onions: "onion",
+  parsnips: "parsnip",
+  radishes: "radish",
+  raspberries: "raspberry",
+  strawberries: "strawberry",
+  tomatoes: "tomato",
+  "turrnip greens": "turnip greens",
+  snowpeas: "snow pea",
+  "water chesnut": "water chestnut",
+};
+
+/** Kept label → visible option text, when two regional names mean the same ingredient. */
+const DISPLAY_LABELS: Record<string, string> = {
+  prawn: "prawn/shrimp",
+  coriander: "coriander/cilantro",
+  capsicum: "capsicum/bell pepper",
+  "spring onion": "spring onion/scallion",
+  eggplant: "eggplant/aubergine",
+  zucchini: "zucchini/courgette",
+  beetroot: "beetroot/beet",
+  celeriac: "celeriac/celery root",
+  chilli: "chilli/chili",
+};
+
+function displayLabel(label: string): string {
+  return DISPLAY_LABELS[label] ?? label;
+}
+
+/** Group pins for labels whose name alone guesses wrong (lower-case display form). */
+const GROUP_OVERRIDES: Record<string, SuggestionGroup> = {
+  olive: "Pantry",
+  applesauce: "Pantry",
+  "blueberry syrup": "Pantry",
+  "guava paste": "Pantry",
+  "coconut milk": "Pantry",
+  "coconut oil": "Pantry",
+  "almond butter": "Pantry",
+  "almond paste": "Pantry",
+  "cashew butter": "Pantry",
+  "peanut butter": "Pantry",
+  "soy nut butter": "Pantry",
+  "honey butter": "Pantry",
+  "fruit butter": "Pantry",
+  "cream of wheat": "Pantry",
+  "bitter melon": "Vegetables",
+  "winter melon": "Vegetables",
+  "mustard greens": "Vegetables",
+  "yellow string beans": "Vegetables",
+  "palm hearts": "Vegetables",
+  buttermilk: "Dairy",
+  "coffee creamer": "Dairy",
+  "goat milk": "Dairy",
+  "oat milk": "Dairy",
+  "rice milk": "Dairy",
+  "strawberry milk": "Dairy",
+  "textured vegetable protein": "Protein",
+  "soybean curd": "Protein",
+  "soybean curd cheese": "Dairy",
+};
+
+/** Word-boundary-ish match so short stems don't hit unrelated labels. Allows a plural s/es. */
 function hasWord(label: string, pattern: string): boolean {
-  return new RegExp(`(?:^|[^a-z])(?:${pattern})(?:$|[^a-z])`).test(label);
+  return new RegExp(`(?:^|[^a-z])(?:${pattern})(?:s|es)?(?:$|[^a-z])`).test(label);
 }
 
 function guessGroup(label: string): SuggestionGroup {
   const l = label.toLowerCase();
 
+  // Sauces, dressings and condiments before fruit/fish/seasoning words ("cranberry sauce").
+  if (
+    hasWord(
+      l,
+      "sauce|dressing|condiment|ketchup|mayonnaise|mayo|relish|pickles?|sauerkraut|kimchi|chutney|salsa|gravy|horseradish|wasabi|mustard"
+    )
+  ) {
+    return "Sauces & condiments";
+  }
+
   // Fruits before pantry honey / protein egg so honeydew and similar stay correct.
   if (
     hasWord(
       l,
-      "apple|banana|berry|blueberry|strawberry|raspberry|blackberry|cherry|grape|grapefruit|lemon|lime|mango|orange|peach|pear|plum|melon|watermelon|cantaloupe|honeydew|kiwi|fig|date|avocado|pineapple|pomegranate|apricot|nectarine|papaya|olive|coconut|tangerine|clementine|cranberry|raisin|currant|guava|passion\\s*fruit|persimmon|lychee|starfruit"
+      "apple|banana|berry|blueberry|strawberry|raspberry|blackberry|cherry|grape|grapefruit|lemon|lime|mango|orange|peach|pear|plum|melon|watermelon|cantaloupe|honeydew|kiwi|fig|date|avocado|pineapple|pomegranate|apricot|nectarine|papaya|olive|coconut|tangerine|clementine|cranberry|raisin|currant|guava|passion\\s*fruit|persimmon|lychee|starfruit|breadfruit|dragon\\s*fruit|rhubarb|prune|kumquat|blackberries|cranberries|raspberries|strawberries"
     )
   ) {
     return "Fruits";
+  }
+
+  // Grains / oils / legumes / sweeteners before vegetable "corn" / "pepper".
+  if (
+    hasWord(
+      l,
+      "flour|sugar|rice|oats?|oatmeal|pasta|water|honey|vanilla|yeast|baking|cocoa|starch|breadcrumb|bread|noodle|couscous|quinoa|barley|cornmeal|corn\\s*syrup|corn\\s*nuts|chips|syrup|molasses|vinegar|broth|stock|bouillon|beans|lentils?|chickpeas?|split\\s*peas?|blackeyed\\s*peas?|soybeans?|dal|cereal|crackers?|jam|jelly|lard|marmalade|millet|miso|popcorn|pretzels?|seaweed|shortening|tahini|tea|vermicelli|bran|bulgur|grits|hominy|buckwheat|dulce|masa|melba|wheat\\s*germ|coffee|spread|sweetener|bean\\s*paste"
+    ) ||
+    l === "oil" ||
+    l.endsWith(" oil")
+  ) {
+    return "Pantry";
   }
 
   // Seasoning peppers before bare "pepper" vegetables.
@@ -217,23 +338,11 @@ function guessGroup(label: string): SuggestionGroup {
     return "Seasonings";
   }
 
-  // Oils / corn pantry items before vegetable "corn" / "pepper".
-  if (
-    hasWord(
-      l,
-      "flour|sugar|rice|oats?|pasta|water|honey|vanilla|yeast|baking|cocoa|starch|breadcrumb|noodle|couscous|quinoa|barley|cornmeal|corn\\s*syrup|corn\\s*nuts|chips|syrup|molasses|vinegar|broth|stock|bouillon"
-    ) ||
-    l === "oil" ||
-    l.endsWith(" oil")
-  ) {
-    return "Pantry";
-  }
-
   // Meats before vegetable "pepper" (e.g. pepper steak).
   if (
     hasWord(
       l,
-      "chicken|beef|pork|bacon|sausage|shrimp|prawn|turkey|lamb|veal|ham|steak|meat|fish|salmon|tuna|cod|tilapia|trout|halibut|sardine|anchovy|mackerel|lobster|crab|clam|oyster|mussel|squid|calamari|octopus|scallop|duck|goose|bison|venison|liver|tripe|hot\\s*dog|frankfurter|bologna|pepperoni|prosciutto|chorizo|tofu|tempeh|seitan"
+      "chicken|beef|pork|bacon|sausage|shrimp|prawn|turkey|lamb|veal|ham|steak|meat|fish|salmon|tuna|cod|tilapia|trout|halibut|sardine|anchovy|mackerel|lobster|crab|clam|oyster|mussel|squid|calamari|octopus|scallop|duck|goose|bison|venison|liver|liverwurst|tripe|hot\\s*dog|frankfurter|bologna|pepperoni|prosciutto|chorizo|tofu|tempeh|seitan|abalone|armadillo|bear|beaver|brains|bratwurst|caribou|caviar|chitterlings|crayfish|dove|fat\\s*back|gizzard|goat|groundhog|heart|hog\\s*maws|kidney|moose|natto|opossum|ostrich|pastrami|pheasant|quail|rabbit|raccoon|ribs?|salami|shellfish|spam|squirrel|thuringer|turtle|wild\\s*pig|game\\s*hen"
     ) ||
     /\beggs?\b/.test(l)
   ) {
@@ -243,10 +352,20 @@ function guessGroup(label: string): SuggestionGroup {
   if (
     hasWord(
       l,
-      "butter|milk|cream|cheese|yogurt|yoghurt|parmesan|whey|ricotta|mozzarella|cheddar|cottage"
+      "butter|milk|cream|creamer|cheese|yogurt|yoghurt|parmesan|whey|ricotta|mozzarella|cheddar|cottage|ghee|kefir|margarine|queso"
     )
   ) {
     return "Dairy";
+  }
+
+  // Nuts and seeds after Dairy so "almond milk" stays dairy.
+  if (
+    hasWord(
+      l,
+      "nuts?|almonds?|cashews?|chestnuts?|pecans?|walnuts?|hazelnuts?|peanuts?|pistachios?|macadamia|brazil\\s*nuts|pine\\s*nuts|mixed\\s*nuts|seeds?|chia\\s*seeds|flax\\s*seeds|flaxseeds?|sesame\\s*seeds|sunflower\\s*seeds|pumpkin\\s*seeds|mixed\\s*seeds"
+    )
+  ) {
+    return "Nuts & seeds";
   }
 
   if (
@@ -262,7 +381,7 @@ function guessGroup(label: string): SuggestionGroup {
   if (
     hasWord(
       l,
-      "tomato|onion|shallot|leek|potato|sweet\\s*potato|carrot|celery|cucumber|zucchini|courgette|eggplant|aubergine|bell\\s*pepper|pepper|capsicum|chili|chilli|chile|beet|beetroot|turnip|parsnip|radish|mushroom|corn|lettuce|cabbage|cauliflower|broccoli|fennel|scallion|asparagus|artichoke|squash|pumpkin|yam|jalapeno|habanero|serrano|kale|spinach|chard|bok\\s*choy|brussels|green\\s*bean|snap\\s*pea|snow\\s*pea|okra|rutabaga|celeriac|celery\\s*root|arugula|rocket|endive|radicchio|collard|mustard\\s*green|watercress|kohlrabi|daikon|jicama|nopal|tomatillo|plantain|taro|cassava|yuca"
+      "tomato|onion|shallot|leek|potato|sweet\\s*potato|carrot|celery|cucumber|zucchini|courgette|eggplant|aubergine|bell\\s*pepper|pepper|capsicum|chili|chilli|chile|beet|beetroot|turnip|parsnip|radish|mushroom|corn|lettuce|cabbage|cauliflower|broccoli|fennel|scallion|asparagus|artichoke|squash|pumpkin|yam|jalapeno|habanero|serrano|kale|spinach|chard|bok\\s*choy|brussels|green\\s*bean|snap\\s*pea|snow\\s*pea|green\\s*peas?|okra|rutabaga|celeriac|celery\\s*root|arugula|rocket|endive|radicchio|collard|mustard\\s*green|watercress|kohlrabi|daikon|jicama|nopal|tomatillo|plantain|taro|cassava|yuca|sprouts?|shoots?|greens?|cress|edamame|escarole|lambsquarter|lotus\\s*roots?|palm\\s*hearts?|pimiento|salsify|cactus|burdock|broccoflower|christophine"
     )
   ) {
     return "Vegetables";
@@ -271,13 +390,16 @@ function guessGroup(label: string): SuggestionGroup {
   return "Other";
 }
 
-const GROUPED: { group: SuggestionGroup; items: string[] }[] = (() => {
+export const GROUPED: { group: SuggestionGroup; items: string[] }[] = (() => {
   const byLabel = new Map<string, Suggestion>();
 
   function add(label: string, group: SuggestionGroup) {
     const display = formatConversionLabel(label);
     const key = display.toLowerCase();
-    if (!byLabel.has(key)) byLabel.set(key, { label: display, group });
+    if (DROPDOWN_ALIASES[key]) return;
+    if (!byLabel.has(key)) {
+      byLabel.set(key, { label: display, group: GROUP_OVERRIDES[key] ?? group });
+    }
   }
 
   for (const unit of PRODUCE_UNITS) {
@@ -308,7 +430,8 @@ const CATALOG_SET = new Set(GROUPED.flatMap((g) => g.items));
 function normalizeKey(key: string | undefined): string {
   if (!key) return "";
   const formatted = formatConversionLabel(key);
-  return CATALOG_SET.has(formatted) ? formatted : "";
+  const kept = DROPDOWN_ALIASES[formatted.toLowerCase()] ?? formatted;
+  return CATALOG_SET.has(kept) ? kept : "";
 }
 
 interface IngredientNameInputProps {
@@ -355,7 +478,17 @@ interface MeasureAsSelectProps {
 
 /** Conversion-base select: Matches first, then grouped catalog. Empty shows —. */
 export function MeasureAsSelect({ name, conversionKey, onChange }: MeasureAsSelectProps) {
-  const matches = useMemo(() => matchingConversionLabels(name), [name]);
+  const matches = useMemo(() => {
+    const kept: string[] = [];
+    const seen = new Set<string>();
+    for (const label of matchingConversionLabels(name)) {
+      const mapped = DROPDOWN_ALIASES[label.toLowerCase()] ?? label;
+      if (seen.has(mapped)) continue;
+      seen.add(mapped);
+      kept.push(mapped);
+    }
+    return kept;
+  }, [name]);
   const matchSet = useMemo(() => new Set(matches), [matches]);
 
   // Prefer stored key; else pre-select a confident match (e.g. name is exactly "water")
@@ -393,7 +526,7 @@ export function MeasureAsSelect({ name, conversionKey, onChange }: MeasureAsSele
         <optgroup label="Matches">
           {matches.map((label) => (
             <option key={`match-${label}`} value={label}>
-              {label}
+              {displayLabel(label)}
             </option>
           ))}
         </optgroup>
@@ -402,7 +535,7 @@ export function MeasureAsSelect({ name, conversionKey, onChange }: MeasureAsSele
         <optgroup key={group} label={group}>
           {items.map((label) => (
             <option key={`${group}-${label}`} value={label}>
-              {label}
+              {displayLabel(label)}
             </option>
           ))}
         </optgroup>

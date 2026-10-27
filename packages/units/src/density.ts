@@ -293,6 +293,7 @@ const EXTRA_DENSITY_ALIASES: Record<string, string[]> = {
   ],
   celery: ["celeriac", "celery root"],
   corn: ["cob", "corn cob"],
+  water_chesnut: ["water chestnut", "water chestnuts"],
   honeydew_melon: ["honeydew", "honeydews"],
   kiwi_fruit: ["kiwi", "kiwis", "kiwifruit"],
   shrimp: ["prawn", "prawns"],

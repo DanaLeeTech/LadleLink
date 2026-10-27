@@ -315,6 +315,27 @@ describe("conversion keys", () => {
     expect(lookupDensity("fennel bulb")?.key).toBe("fennel");
   });
 
+  it("resolves the corrected water chestnut spelling", () => {
+    expect(lookupDensity("water chestnut")?.key).toBe("water_chesnut");
+    expect(lookupDensity("water chesnut")?.key).toBe("water_chesnut");
+    expect(resolvePieceGrams({ quantity: 1, unit: "", name: "water chestnut" })).toBe(10);
+  });
+
+  it("keeps conversions working for dropdown labels", () => {
+    expect(convertIngredient({ quantity: 1, unit: "cup", name: "carrot" }, "g", metric).quantity).toBe(
+      199
+    );
+    expect(convertIngredient({ quantity: 2, unit: "", name: "capsicum" }, "g", metric).quantity).toBe(
+      300
+    );
+    expect(convertIngredient({ quantity: 100, unit: "g", name: "prawn" }, "ml", metric).quantity).toBe(
+      178
+    );
+    expect(
+      convertIngredient({ quantity: 1, unit: "", name: "water chestnut" }, "g", metric).quantity
+    ).toBe(10);
+  });
+
   it("infers butter / flour / onion / brown sugar variations", () => {
     expect(inferConversionKey("unsalted butter")).toBe("butter");
     expect(inferConversionKey("salted butter")).toBe("butter");
