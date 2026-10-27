@@ -124,7 +124,7 @@ export function App() {
           </nav>
         </div>
         <Link to="/" className="brand" onClick={closeNav}>
-          <img src="/logo.svg" alt="" className="brand-logo" />
+          <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" className="brand-logo" />
           LadleLink
         </Link>
         <ThemeToggle theme={theme} onToggle={handleToggleTheme} />
