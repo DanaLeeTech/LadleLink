@@ -903,10 +903,10 @@ textarea {
   top: 0;
   z-index: 30;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
-  gap: 0.3rem 0.6rem;
+  gap: 0.35rem;
   padding: 0.5rem 1rem;
   background: var(--bg-top);
   color: var(--topbar-fg);
