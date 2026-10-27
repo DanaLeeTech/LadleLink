@@ -12,5 +12,4 @@ export function isDemoMode(): boolean {
   return typeof __DEMO_MODE__ !== "undefined" && __DEMO_MODE__;
 }
 
-export const DEMO_NOTICE =
-  "Recipes you add are saved in this browser only. Nothing is stored on the server.";
+export const DEMO_NOTICE = "Recipes you add are saved in this browser only.";
