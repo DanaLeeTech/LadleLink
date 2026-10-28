@@ -1,5 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import type { ScaledIngredient } from "@ladlelink/scaling";
 import type { CanonicalUnit, Ingredient } from "@ladlelink/types";
 import {
   formatIngredientPreview,
@@ -7,6 +8,7 @@ import {
   parseQuantityField,
   parseQuantityFieldForCommit,
 } from "./ingredient-ui";
+import { formatIngredientLine } from "./recipe-card-export";
 
 describe("parseQuantityField", () => {
   it("accepts whole numbers", () => {
@@ -107,5 +109,28 @@ describe("quantity display", () => {
     assert.equal(formatIngredientPreview(odd), "0.7 egg");
     const range: Ingredient = { quantity: 0.5, quantityMax: 1, unit: "cup", name: "cream" };
     assert.equal(formatIngredientPreview(range), "½-1 cup cream");
+  });
+});
+
+describe("formatIngredientLine", () => {
+  const zeroQty = (name: string, notes?: string): ScaledIngredient =>
+    ({ quantity: 0, unit: "", name, notes, displayQuantity: "" }) as ScaledIngredient;
+
+  it("sentence-cases the name when there is no quantity", () => {
+    assert.equal(formatIngredientLine(zeroQty("salt", "to taste")), "Salt (to taste)");
+    assert.equal(
+      formatIngredientLine(zeroQty("Parmesan cheese", "shaved, to serve")),
+      "Parmesan cheese (shaved, to serve)"
+    );
+  });
+
+  it("keeps a to-taste unit at the front of the line", () => {
+    const taste = {
+      quantity: 0,
+      unit: "to_taste",
+      name: "salt",
+      displayQuantity: "",
+    } as ScaledIngredient;
+    assert.equal(formatIngredientLine(taste), "To taste salt");
   });
 });

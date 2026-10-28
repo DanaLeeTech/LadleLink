@@ -748,6 +748,10 @@ textarea {
   .ingredient-main--reader > .size-label::after {
     content: " ";
   }
+
+  .ingredient-main--reader > .meta {
+    margin-left: 0.35em;
+  }
 }
 
 .unit-label {

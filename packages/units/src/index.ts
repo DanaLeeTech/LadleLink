@@ -185,7 +185,7 @@ export function convertIngredient(
             {
               quantity: rounded,
               unit: toUnit,
-              displayQuantity: formatQuantity(rounded, toUnit),
+              displayQuantity: formatQuantityRange(rounded, toUnit),
               kind,
             },
             qtyMax,
@@ -222,7 +222,7 @@ export function convertIngredient(
             {
               quantity: rounded,
               unit: toUnit || "",
-              displayQuantity: formatQuantity(rounded, toUnit || "piece"),
+              displayQuantity: formatQuantityRange(rounded, toUnit || "piece"),
               kind,
             },
             qtyMax,
@@ -279,7 +279,7 @@ export function convertIngredient(
         {
           quantity: rounded,
           unit: toUnit,
-          displayQuantity: formatQuantity(rounded, toUnit),
+          displayQuantity: formatQuantityRange(rounded, toUnit),
           kind: densityInfo.kind ?? kind,
         },
         qtyMax,
@@ -329,7 +329,7 @@ export function convertIngredient(
         {
           quantity: rounded,
           unit: toUnit || "",
-          displayQuantity: formatQuantity(rounded, toUnit || "piece"),
+          displayQuantity: formatQuantityRange(rounded, toUnit || "piece"),
           kind: densityInfo.kind ?? kind,
         },
         qtyMax,
@@ -360,7 +360,7 @@ export function convertIngredient(
       {
         quantity: rounded,
         unit: toUnit,
-        displayQuantity: formatQuantity(rounded, toUnit),
+        displayQuantity: formatQuantityRange(rounded, toUnit),
         kind,
       },
       qtyMax,
@@ -382,7 +382,7 @@ export function convertIngredient(
       {
         quantity: rounded,
         unit: toUnit,
-        displayQuantity: formatQuantity(rounded, toUnit),
+        displayQuantity: formatQuantityRange(rounded, toUnit),
         kind,
       },
       qtyMax,
@@ -421,7 +421,7 @@ export function convertIngredient(
       {
         quantity: rounded,
         unit: toUnit,
-        displayQuantity: formatQuantity(rounded, toUnit),
+        displayQuantity: formatQuantityRange(rounded, toUnit),
         kind: densityInfo.kind,
       },
       qtyMax,
@@ -444,7 +444,7 @@ export function convertIngredient(
       {
         quantity: rounded,
         unit: toUnit,
-        displayQuantity: formatQuantity(rounded, toUnit),
+        displayQuantity: formatQuantityRange(rounded, toUnit),
         kind: densityInfo.kind,
       },
       qtyMax,

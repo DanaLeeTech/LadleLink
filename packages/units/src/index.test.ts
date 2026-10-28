@@ -188,6 +188,16 @@ describe("formatting", () => {
     expect(formatQuantityRange(4, "oz", 8)).toBe("4-8");
   });
 
+  it("leaves a zero quantity blank so the name leads the line", () => {
+    expect(formatQuantityRange(0, "", undefined)).toBe("");
+    expect(formatQuantityRange(0, "piece")).toBe("");
+    expect(formatQuantityRange(0, "cup")).toBe("");
+    // A real range keeps both ends.
+    expect(formatQuantityRange(0, "", 2)).toBe("0-2");
+    // The editable quantity field still shows 0.
+    expect(formatQuantity(0, "piece")).toBe("0");
+  });
+
   it("keeps metric mass and volume as decimals, not fractions", () => {
     expect(formatQuantity(1.5, "g")).toBe("1.5");
     expect(formatQuantity(0.5, "g")).toBe("0.5");

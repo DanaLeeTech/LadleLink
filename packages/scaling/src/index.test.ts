@@ -114,6 +114,28 @@ describe("scaleRecipeIngredients", () => {
     expect(cups[0].quantity).toBeGreaterThan(1);
   });
 
+  it("leaves a zero quantity blank at every scale", () => {
+    const zero: Ingredient[] = [
+      { quantity: 0, unit: "", name: "salt", notes: "to taste" },
+      { quantity: 0, unit: "to_taste", name: "pepper" },
+    ];
+    // 4 servings → 2 (0.5×), 8 (2×) and 12 (3×).
+    for (const target of [2, 8, 12]) {
+      const scaled = scaleRecipeIngredients(zero, 4, target);
+      expect(scaled[0].displayQuantity).toBe("");
+      expect(scaled[1].displayQuantity).toBe("");
+    }
+
+    // Normal quantities still scale.
+    const doubled = scaleRecipeIngredients(
+      [{ quantity: 2, unit: "cup", name: "flour" }],
+      4,
+      8
+    );
+    expect(doubled[0].quantity).toBe(4);
+    expect(doubled[0].displayQuantity).toBe("4");
+  });
+
   it("scales with Australian tablespoons by default and US when turned off", () => {
     const oil: Ingredient[] = [{ quantity: 1, unit: "tbsp", name: "olive oil" }];
 
