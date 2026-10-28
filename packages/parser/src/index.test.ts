@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   formatStepsForEditor,
+  looksLikeIngredientLine,
   parseHeuristic,
   parseIngredientLine,
   parseJsonLd,
@@ -914,6 +915,62 @@ Instructions
       const body = `${heading}\n\nIngredients\n- 2 cups flour\n\nMethod\n1. Mix.\n2. Bake.`;
       expect(parseRecipeText(body).title).toBe("Brownies");
     }
+  });
+
+  it("keeps quantity-less ingredient lines inside an Ingredients section", () => {
+    const recipe = parseRecipeText(
+      `
+Sausage rolls
+
+Ingredients
+1 cup flour
+salt, to taste
+Salt and pepper, to taste
+Parmesan cheese, shaved, to serve
+For the filling:
+For the sauce
+salt and pepper
+
+Method
+1. Mix everything together.
+2. Bake for 20 minutes.
+`.trim()
+    );
+    expect(recipe.title).toBe("Sausage rolls");
+    expect(recipe.ingredients).toHaveLength(5);
+    expect(recipe.ingredients.map((i) => i.name)).toEqual([
+      "flour",
+      "salt",
+      "Salt and pepper",
+      "Parmesan cheese",
+      "salt and pepper",
+    ]);
+    expect(recipe.ingredients[0]).toMatchObject({ quantity: 1, unit: "cup" });
+    expect(recipe.ingredients[1]).toMatchObject({ quantity: 0, unit: "", notes: "to taste" });
+    expect(recipe.ingredients[2]).toMatchObject({
+      quantity: 0,
+      unit: "",
+      notes: "to taste",
+    });
+    expect(recipe.ingredients[3]).toMatchObject({
+      quantity: 0,
+      unit: "",
+      notes: "shaved, to serve",
+    });
+    expect(recipe.ingredients[4]).toMatchObject({ quantity: 0, unit: "" });
+    expect(recipe.ingredients.some((i) => /For the filling|For the sauce/.test(i.name))).toBe(
+      false
+    );
+    expect(recipe.steps).toEqual(["Mix everything together.", "Bake for 20 minutes."]);
+  });
+
+  it("still reads a bare to-taste line as a to_taste unit", () => {
+    expect(parseIngredientLine("salt to taste")).toMatchObject({
+      quantity: 0,
+      unit: "to_taste",
+      name: "salt",
+    });
+    expect(looksLikeIngredientLine("salt to taste")).toBe(true);
   });
 
   it("throws when no ingredients can be extracted", () => {

@@ -172,6 +172,12 @@ export function looksLikeIngredientLine(line: string): boolean {
     return true;
   }
 
+  // "salt, to taste" / "Parmesan cheese, shaved, to serve" — a name plus a short
+  // prep note is an ingredient even with no quantity.
+  if (parsed.notes && parsed.name.trim() && wordCount <= 8 && !/[!?]/.test(t)) {
+    return true;
+  }
+
   // OCR-damaged qty but clear unit + short name ("cup desiccated coconut")
   if (UNIT_WORD.test(t) && t.split(/\s+/).length <= 10 && !/^(mix|stir|bake|roll|cook|add)\b/i.test(t)) {
     return true;
@@ -182,6 +188,13 @@ export function looksLikeIngredientLine(line: string): boolean {
 
 function isNumberedStep(line: string): boolean {
   return /^\d+\s*[.):\-]\s+\S/.test(line);
+}
+
+/** "For the sauce" / "To the topping" — a group heading, not something you can buy. */
+function isBareSubHeading(line: string): boolean {
+  if (!/^(?:for|to)\s+(?:the|a|an)\b/i.test(line.trim())) return false;
+  const parsed = parseIngredientLine(line);
+  return parsed.quantity === 0 && !parsed.unit && !parsed.notes;
 }
 
 function findServingsRaw(lines: string[]): string | undefined {
@@ -376,9 +389,14 @@ export function parseRecipeText(text: string): ParsedRecipe {
     stepLines = split.stepLines;
   }
 
-  const candidateLines = ingredientLines.some((l) => looksLikeIngredientLine(l))
-    ? ingredientLines.filter((l) => looksLikeIngredientLine(l))
-    : ingredientLines;
+  // Inside an explicit Ingredients section the list is authoritative: keep lines as
+  // written, dropping section sub-headings ("For the filling:", "For the sauce").
+  const inIngredientsSection = ingredientsIdx >= 0;
+  const candidateLines = inIngredientsSection
+    ? ingredientLines.filter((l) => !l.trim().endsWith(":") && !isBareSubHeading(l))
+    : ingredientLines.some((l) => looksLikeIngredientLine(l))
+      ? ingredientLines.filter((l) => looksLikeIngredientLine(l))
+      : ingredientLines;
 
   const ingredients = candidateLines
     .map(parseIngredientLine)

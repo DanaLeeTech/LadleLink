@@ -282,6 +282,41 @@ describe("comma notes on any ingredient line", () => {
     });
   });
 
+  it("keeps a seasoning name whole", () => {
+    expect(parseIngredientLine("salt and pepper")).toMatchObject({
+      quantity: 0,
+      unit: "",
+      name: "salt and pepper",
+    });
+    expect(parseIngredientLine("Salt and pepper, to taste")).toMatchObject({
+      quantity: 0,
+      unit: "",
+      name: "Salt and pepper",
+      notes: "to taste",
+    });
+  });
+
+  it("recognises shaved, plus-extra and greasing tails as notes", () => {
+    expect(parseIngredientLine("Parmesan cheese, shaved, to serve")).toMatchObject({
+      quantity: 0,
+      unit: "",
+      name: "Parmesan cheese",
+      notes: "shaved, to serve",
+    });
+    expect(parseIngredientLine("1 tbsp oil, plus extra for frying")).toMatchObject({
+      quantity: 1,
+      unit: "tbsp",
+      name: "oil",
+      notes: "plus extra for frying",
+    });
+    expect(parseIngredientLine("Melted low-fat dairy spread, to grease")).toMatchObject({
+      quantity: 0,
+      unit: "",
+      name: "Melted low-fat dairy spread",
+      notes: "to grease",
+    });
+  });
+
   it("merges a comma note with a bracket note without duplicating it", () => {
     expect(parseIngredientLine("2 tsp parsley, finely chopped (, finely chopped)")).toMatchObject({
       quantity: 2,

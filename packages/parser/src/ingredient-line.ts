@@ -310,9 +310,9 @@ const COMMA_NOTE_START = new RegExp(
     "(?:chopped|diced|minced|sliced|grated|shredded|crushed|beaten|whisked|mashed|" +
     "sifted|melted|cooled|warmed|chilled|softened|peeled|seeded|deseeded|drained|" +
     "rinsed|trimmed|halved|quartered|cubed|torn|juiced|zested|cut|deveined|scrubbed|" +
-    "pitted|stemmed|hulled|thawed|defrosted|divided|optional|" +
-    "room temperature|at room temperature|as needed|if desired|plus more|" +
-    "for serving|to serve|to taste)\\b",
+    "pitted|stemmed|hulled|thawed|defrosted|divided|optional|shaved|" +
+    "room temperature|at room temperature|as needed|if desired|plus more|plus extra|" +
+    "for serving|to serve|to taste|to grease|for frying|for dusting)\\b",
   "i"
 );
 
