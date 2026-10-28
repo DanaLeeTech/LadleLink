@@ -511,6 +511,31 @@ describe("conversion keys", () => {
     expect(inferConversionKey("sel")).toBe("table salt");
   });
 
+  it("pre-selects the English Measure-as label for French names", () => {
+    const french: [string, string][] = [
+      ["farine", "flour"],
+      ["sucre", "sugar"],
+      ["lait", "milk"],
+      ["beurre", "butter"],
+      ["oeufs", "egg"],
+      ["œufs", "egg"],
+      ["huile", "oil"],
+      ["sel", "table salt"],
+    ];
+
+    for (const [name, label] of french) {
+      expect(matchingConversionLabels(name)[0]).toBe(label);
+      expect(inferConversionKey(name)).toBe(label);
+    }
+  });
+
+  it("keeps the French aliases pointing at real select options", () => {
+    const catalog = conversionCatalogLabels();
+    for (const label of ["flour", "sugar", "milk", "butter", "egg", "oil", "table salt"]) {
+      expect(catalog).toContain(label);
+    }
+  });
+
   it("maps powder names to spice unless a non-produce catalog match wins", () => {
     expect(inferConversionKey("curry powder")).toBe("spice");
     expect(inferConversionKey("asafoetida powder")).toBe("spice");

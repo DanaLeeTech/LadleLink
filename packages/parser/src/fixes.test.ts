@@ -189,9 +189,65 @@ describe("pack size and bracket notes after the name", () => {
     expect(ing.notes).toContain("100 g, per piece; 1 - 2 pieces");
   });
 
+  it("reads a dual-weight bracket on a bare count as one note", () => {
+    const ing = parseIngredientLine(
+      "2 boneless pork loin chops (½ inch thick) ((100 g, 3.5 oz per piece; ½ inch, 1–1.3 cm thick))"
+    );
+    expect(ing).toMatchObject({
+      quantity: 2,
+      unit: "",
+      name: "boneless pork loin chops",
+    });
+    expect(ing.name).not.toContain("(");
+    expect(ing.notes).toBe("0.5 inch thick, 100 g / 3.5 oz per piece, 1-1.3 cm thick");
+  });
+
   it("reads French huile and sel as oil and table salt", () => {
     expect(parseIngredientLine("2 c. à soupe huile").conversionKey).toBe("oil");
     expect(parseIngredientLine("1 c. à café sel").conversionKey).toBe("table salt");
+  });
+});
+
+describe("comma prep notes on a counted line", () => {
+  it("moves a trailing prep phrase into the notes, not the name", () => {
+    expect(parseIngredientLine("2 eggs, lightly whisked")).toMatchObject({
+      quantity: 2,
+      unit: "",
+      notes: "lightly whisked",
+    });
+    expect(parseIngredientLine("2 eggs, lightly whisked").name).toBe(
+      parseIngredientLine("2 eggs").name
+    );
+    expect(parseIngredientLine("2 onions, diced")).toMatchObject({
+      quantity: 2,
+      name: "onion",
+      notes: "diced",
+    });
+    expect(parseIngredientLine("3 cloves garlic, minced")).toMatchObject({
+      quantity: 3,
+      unit: "clove",
+      name: "garlic",
+      notes: "minced",
+    });
+  });
+
+  it("takes a size word out of a counted name instead of doubling it", () => {
+    const ing = parseIngredientLine("2 overripe medium bananas, mashed");
+    expect(ing).toMatchObject({
+      quantity: 2,
+      unit: "",
+      name: "overripe bananas",
+      size: "medium",
+      notes: "mashed",
+    });
+    expect(ing.name).not.toContain("medium");
+  });
+
+  it("leaves a measured line and a real ingredient tail alone", () => {
+    expect(parseIngredientLine("1 cup flour, sifted")).toMatchObject({
+      name: "flour, sifted",
+    });
+    expect(parseIngredientLine("2 tomatoes, salt and pepper").name).toContain("salt and pepper");
   });
 });
 

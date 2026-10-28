@@ -295,6 +295,14 @@ const HEAPED_AFTER_RE = new RegExp(
   "i"
 );
 
+/** "2 eggs, lightly whisked" — a comma-separated prep phrase at the end of a count. */
+const PREP_TERMS =
+  "chopped|diced|minced|sliced|grated|shredded|crushed|beaten|whisked|mashed|sifted|melted|softened|peeled|seeded|drained|rinsed|trimmed|halved|quartered|cubed|torn|juiced|zested";
+const PREP_NOTE_RE = new RegExp(
+  `^(\\d[^,]*),\\s*((?:(?:lightly|finely|roughly|coarsely|thinly|freshly|well)\\s+)?(?:${PREP_TERMS}))\\s*$`,
+  "i"
+);
+
 type PreparedLine = {
   text: string;
   notes: string[];
@@ -334,7 +342,8 @@ function prepareIngredientLine(cleaned: string): PreparedLine {
       new RegExp(`(\\d)\\s*${char}`),
       (_, whole) => `${Number(whole) + value}`
     );
-    text = text.replace(char, String(value));
+    // replaceAll: a second standalone "½" in the same line must normalize too
+    text = text.replaceAll(char, String(value));
   }
   // Mixed numbers → decimal so ranges like "2 1/2 to 3 cups" parse as one amount
   const toDecimal = (_: string, whole: string, num: string, den: string) =>
@@ -412,6 +421,18 @@ function prepareIngredientLine(cleaned: string): PreparedLine {
     text = text.replace(HEAPED_AFTER_RE, `${heapedAfter[1]} ${heapedAfter[2]} `);
   }
 
+  // "2 eggs, lightly whisked" — a trailing prep phrase on a counted line is a note
+  const prepNote = text.match(PREP_NOTE_RE);
+  if (prepNote) {
+    const lead = findMeasures(prepNote[1]!)[0];
+    const family = lead ? unitFamily(lead.unit) : "countable";
+    // A measured amount keeps its tail: "1 cup flour, sifted" is flour, sifted
+    if (family !== "mass" && family !== "volume") {
+      notes.push(cleanNotes(prepNote[2]!));
+      text = prepNote[1]!;
+    }
+  }
+
   // "2 cups plus 2 tbsp flour" / "2 cups minus 2 tbsp" — second amount is a note
   const extraAmount = text.match(/\s+(plus|\+|minus)\s+(.+)$/i);
   if (extraAmount) {
@@ -425,7 +446,7 @@ function prepareIngredientLine(cleaned: string): PreparedLine {
     }
   }
 
-  text = moveBracketNotes(text, notes);
+  text = moveBracketNotes(text, notes, isCountLine(text));
 
   const finalText = trimEdges(text.replace(/\s+/g, " "));
   const leadingMeasure = findMeasures(finalText)[0];
@@ -486,14 +507,44 @@ function isMeasuredNoteBracket(content: string): boolean {
 }
 
 /**
+ * A count of things ("2 boneless pork chops", "2 overripe bananas"): the word
+ * after the number is not a unit, so bracketed amounts describe the items and
+ * are facts, not alternative amounts.
+ */
+function isCountLine(text: string): boolean {
+  const head = text.match(/^\d+(?:\.\d+)?\s+[a-zA-Z]+/);
+  return head != null && findMeasures(head[0]).length === 0;
+}
+
+/**
+ * Flatten one bracket group of a count line into a single note: a dual
+ * same-family amount reads "100 g / 3.5 oz", nested ";" separators become ", ",
+ * and an amount already noted ("0.5 inch" after "0.5 inch thick") is dropped.
+ */
+function flattenCountNote(content: string, notes: string[]): string {
+  const items: { text: string; family: string | null }[] = [];
+  for (const fragment of content.replace(/[()]/g, ",").split(/\s*[,;]\s*/)) {
+    const text = fragment.trim();
+    if (!text || (hasAmount(text) && notes.some((n) => n.includes(text)))) continue;
+    const measure = findMeasures(text)[0];
+    const family = measure ? unitFamily(measure.unit) : null;
+    const prev = items[items.length - 1];
+    if (prev && family && family === prev.family) prev.text += ` / ${text}`;
+    else items.push({ text, family });
+  }
+  return items.map((item) => item.text).join(", ");
+}
+
+/**
  * Move bracket groups that are notes into `notes`, flattening nested brackets
  * into one note. Amount-only brackets ("(281g)") and other text such as
  * "(warm)" stay in place: the dual-measure and parenthetical rules in
- * parseIngredientCore need them.
+ * parseIngredientCore need them. On a count line ("2 boneless pork chops") every
+ * bracket with an amount is a note about the items.
  * shortcut: only a leading comma/colon, a comma before the group, or a measure
  * plus extra words makes a note group; widen this if more sites need it.
  */
-function moveBracketNotes(text: string, notes: string[]): string {
+function moveBracketNotes(text: string, notes: string[], countLine = false): string {
   let out = "";
   let i = 0;
   while (i < text.length) {
@@ -523,11 +574,16 @@ function moveBracketNotes(text: string, notes: string[]): string {
     // Nested brackets are the "((warm) - 118 ml)" conversion style too
     const noteGroup =
       !conversionGroup &&
-      (NOTE_GROUP_RE.test(content) ||
+      ((countLine && hasAmount(content)) ||
+        NOTE_GROUP_RE.test(content) ||
         (isMeasuredNoteBracket(content) && !content.includes("(")) ||
         (/,\s*$/.test(out) && !isAmountOnlyBracket(content)));
     if (noteGroup) {
-      const note = cleanNotes(content.replace(/[()]/g, ", ").replace(/\s*,\s*/g, ", "));
+      // Nested groups on a count line were flattened, so their own separators are gone
+      const note =
+        countLine && content.includes("(")
+          ? flattenCountNote(content, notes)
+          : cleanNotes(content.replace(/[()]/g, ", ").replace(/\s*,\s*/g, ", "));
       if (note) notes.push(note);
       out += " ";
     } else {
@@ -764,6 +820,20 @@ function fromParts(
         unit,
         name: cleanName(m[2]),
         size: parseSize(m[1]),
+      });
+    }
+  }
+
+  // "2 overripe medium bananas" — a size word inside a counted name is the size,
+  // not part of the name; a trailing size ("1 egg large") is left alone
+  if (!size && unitFamily(unit) === "countable") {
+    const m = name.match(new RegExp(`^(.+?)\\s+${SIZE_PATTERN}\\s+(.+)$`, "i"));
+    if (m) {
+      return finalize({
+        quantity,
+        unit,
+        name: cleanName(`${m[1]} ${m[3]}`),
+        size: parseSize(m[2]),
       });
     }
   }

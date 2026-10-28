@@ -87,7 +87,8 @@ describe("importRecipeInBrowser", () => {
 
   it("tells a real page from a challenge or blank shell", () => {
     assert.equal(looksLikeRealPage(fixture("wikipedia-article.html")), true);
-    assert.equal(looksLikeRealPage(fixture("not-found.html")), false);
+    // A site's own 404 is a real page: no other reader will answer differently.
+    assert.equal(looksLikeRealPage(fixture("not-found.html")), true);
     assert.equal(
       looksLikeRealPage(
         "<!doctype html><html><head><title>Just a moment...</title></head><body><p>Checking your browser</p></body></html>"
@@ -136,6 +137,44 @@ describe("importRecipeInBrowser", () => {
       () => importRecipeInBrowser("https://example.com/gone", fetchImpl),
       /No recipe found on that page/
     );
+  });
+
+  it("stops after one reader when a real site 404 comes back", async () => {
+    const SITE_404 = `<!doctype html>
+<html>
+<head><title>Page not found - RecipeTin Eats</title></head>
+<body>
+  <header>
+    <nav><a href="/">Home</a> <a href="/recipes">Recipes</a> <a href="/about">About</a></nav>
+  </header>
+  <main>
+    <h1>Oops, that page has gone missing</h1>
+    <p>The recipe you were looking for is not here any more. It may have been renamed,
+    moved, or never existed at all. Head back to the home page and search for it there,
+    or browse the latest recipes below.</p>
+    <ul>
+      <li><a href="/recipes/pancakes">Fluffy pancakes</a></li>
+      <li><a href="/recipes/lasagne">Beef lasagne</a></li>
+      <li><a href="/recipes/cookies">Choc chip cookies</a></li>
+    </ul>
+  </main>
+</body>
+</html>`;
+
+    const calls: string[] = [];
+    const fetchImpl = fakeFetch(() => SITE_404, calls);
+    const started = Date.now();
+    await assert.rejects(
+      () => importRecipeInBrowser("https://www.recipetineats.com/gone", fetchImpl),
+      /No recipe found on that page/
+    );
+    const elapsed = Date.now() - started;
+
+    // First reader, then the single rendered-markdown attempt — no proxy repeats.
+    assert.equal(calls.length, 2);
+    assert.match(calls[0]!, /r\.jina\.ai/);
+    assert.ok(!calls.some((url) => url.includes("allorigins") || url.includes("codetabs")));
+    assert.ok(elapsed < 8000, `took ${elapsed}ms`);
   });
 
   it("rejects a Wikipedia-style article", async () => {

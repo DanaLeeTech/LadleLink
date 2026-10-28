@@ -17,6 +17,7 @@ const CONVERSION_ALIAS_SEEDS: Record<string, string[]> = {
     "softened butter",
     "melted butter",
     "sweet butter",
+    "beurre",
   ],
   margarine: ["margarine"],
   flour: [
@@ -27,6 +28,7 @@ const CONVERSION_ALIAS_SEEDS: Record<string, string[]> = {
     "plain flour",
     "white flour",
     "wheat flour",
+    "farine",
   ],
   "bread flour": ["bread flour", "strong flour", "strong white flour"],
   "cake flour": ["cake flour", "soft flour"],
@@ -43,6 +45,7 @@ const CONVERSION_ALIAS_SEEDS: Record<string, string[]> = {
     "caster sugar",
     "castor sugar",
     "superfine sugar",
+    "sucre",
   ],
   "brown sugar": [
     "brown sugar",
@@ -95,6 +98,7 @@ const CONVERSION_ALIAS_SEEDS: Record<string, string[]> = {
     "skimmed milk",
     "low-fat milk",
     "low fat milk",
+    "lait",
   ],
   cream: [
     "cream",
@@ -151,7 +155,19 @@ const CONVERSION_ALIAS_SEEDS: Record<string, string[]> = {
   ],
   "sweet potato": ["sweet potato", "sweet potatoes", "yam", "yams"],
   garlic: ["garlic"],
-  egg: ["egg", "eggs", "large egg", "large eggs", "medium egg", "medium eggs"],
+  egg: [
+    "egg",
+    "eggs",
+    "large egg",
+    "large eggs",
+    "medium egg",
+    "medium eggs",
+    // French, matching FRENCH_INFER_WORDS in the parser
+    "oeuf",
+    "oeufs",
+    "œuf",
+    "œufs",
+  ],
   "chicken breast": [
     "chicken breast",
     "chicken breasts",

@@ -56,25 +56,20 @@ const JUNK_TITLE =
 /** Below this, a response is a shell (blank, JS app, rate-limit notice), not a page. */
 const MIN_PAGE_CHARS = 200;
 
-/** Visible text with tags, scripts and styles stripped. */
-function visibleText(html: string): string {
-  return html
-    .replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, " ")
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+/** Blocking interstitials only — a reader may still get past these. */
+const CHALLENGE_TITLE =
+  /^(?:just a moment|attention required|verify you are human|checking your browser|access denied|forbidden|403\b)/i;
 
 /**
- * Whether a reader returned the real page or a challenge/blank shell. A real
- * page has a usable title or real body text; a Cloudflare interstitial, a 4xx
- * screen or an empty body means another reader is worth a try.
+ * Whether a reader returned a real page or a challenge/blank shell. Any page
+ * with a normal body counts as real — a site's own 404 is still that site
+ * answering, so every reader would return the same thing. Only a challenge
+ * screen or an empty shell means another reader is worth a try.
  */
 export function looksLikeRealPage(html: string): boolean {
   if (html.trim().length < MIN_PAGE_CHARS) return false;
   const title = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1]?.trim() ?? "";
-  if (JUNK_TITLE.test(title)) return false;
-  return title.length > 0 || visibleText(html).length >= MIN_PAGE_CHARS;
+  return !CHALLENGE_TITLE.test(title);
 }
 
 /**
