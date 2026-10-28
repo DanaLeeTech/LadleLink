@@ -35,7 +35,12 @@ describe("page import: real recipe sites", () => {
 
     expect(recipe.title).toBe("Slow cooked beef ragu");
     expect(recipe.servings).toBe(4);
-    expect(recipe.ingredients[0]).toMatchObject({ quantity: 500, unit: "g", name: "beef chuck, cubed" });
+    expect(recipe.ingredients[0]).toMatchObject({
+      quantity: 500,
+      unit: "g",
+      name: "beef chuck",
+      notes: "cubed",
+    });
     expect(recipe.ingredients[3]).toMatchObject({ quantity: 400, unit: "g" });
     expect(recipe.ingredients[3].name).toMatch(/can diced tomatoes/);
   });

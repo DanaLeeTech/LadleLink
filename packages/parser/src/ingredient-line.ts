@@ -269,6 +269,12 @@ const EACH_WEIGHT_RE = new RegExp(
   "i"
 );
 
+/** Text from `from` up to the next bracket — the rest of the current group. */
+function upToNextBracket(text: string, from: number): string {
+  const next = text.slice(from).search(/[()]/);
+  return next === -1 ? text.slice(from) : text.slice(from, from + next);
+}
+
 /** "(Note 1)" at the end of a line: note text, not part of the ingredient name. */
 const TRAILING_PAREN_NOTE_RE = /\(\s*(?:note|notes|see|optional|photo)\b[^)]*\)\s*$/i;
 
@@ -295,11 +301,18 @@ const HEAPED_AFTER_RE = new RegExp(
   "i"
 );
 
-/** "2 eggs, lightly whisked" — a comma-separated prep phrase at the end of a count. */
-const PREP_TERMS =
-  "chopped|diced|minced|sliced|grated|shredded|crushed|beaten|whisked|mashed|sifted|melted|softened|peeled|seeded|drained|rinsed|trimmed|halved|quartered|cubed|torn|juiced|zested";
-const PREP_NOTE_RE = new RegExp(
-  `^(\\d[^,]*),\\s*((?:(?:lightly|finely|roughly|coarsely|thinly|freshly|well)\\s+)?(?:${PREP_TERMS}))\\s*$`,
+/**
+ * Prep/state phrases that start a comma note ("butter, melted, cooled"). Anchored
+ * so a name with its own comma ("2 tomatoes, salt and pepper") is never split.
+ */
+const COMMA_NOTE_START = new RegExp(
+  `^(?:(?:lightly|finely|roughly|coarsely|thinly|thickly|very|well|freshly)\\s+)?` +
+    "(?:chopped|diced|minced|sliced|grated|shredded|crushed|beaten|whisked|mashed|" +
+    "sifted|melted|cooled|warmed|chilled|softened|peeled|seeded|deseeded|drained|" +
+    "rinsed|trimmed|halved|quartered|cubed|torn|juiced|zested|cut|deveined|scrubbed|" +
+    "pitted|stemmed|hulled|thawed|defrosted|divided|optional|" +
+    "room temperature|at room temperature|as needed|if desired|plus more|" +
+    "for serving|to serve|to taste)\\b",
   "i"
 );
 
@@ -369,7 +382,13 @@ function prepareIngredientLine(cleaned: string): PreparedLine {
   const each = text.match(EACH_WEIGHT_RE);
   const eachAfterName =
     each != null && /[a-zA-Z][^a-zA-Z0-9]{0,2}$/.test(text.slice(0, each.index));
-  if (each && eachAfterName) {
+  // Skip only when words sit before the closing bracket and the match did not
+  // already close it: "(50 g each w/o shell)" is one note, "(150-180g each) x" a weight.
+  const eachGroupText = each
+    ? upToNextBracket(text, (each.index ?? 0) + each[0].length)
+    : "";
+  const eachClosedGroup = each != null && each[0].endsWith(")");
+  if (each && eachAfterName && (eachClosedGroup || !/[a-zA-Z]/.test(eachGroupText))) {
     const unit = unitLabel(canonicalizeUnit(each[3] ?? ""));
     const amount = each[2] ? `${each[1]}-${each[2]}` : `${each[1]}`;
     notes.push(`${amount} ${unit} each`.replace(/\s+/g, " ").trim());
@@ -421,18 +440,6 @@ function prepareIngredientLine(cleaned: string): PreparedLine {
     text = text.replace(HEAPED_AFTER_RE, `${heapedAfter[1]} ${heapedAfter[2]} `);
   }
 
-  // "2 eggs, lightly whisked" — a trailing prep phrase on a counted line is a note
-  const prepNote = text.match(PREP_NOTE_RE);
-  if (prepNote) {
-    const lead = findMeasures(prepNote[1]!)[0];
-    const family = lead ? unitFamily(lead.unit) : "countable";
-    // A measured amount keeps its tail: "1 cup flour, sifted" is flour, sifted
-    if (family !== "mass" && family !== "volume") {
-      notes.push(cleanNotes(prepNote[2]!));
-      text = prepNote[1]!;
-    }
-  }
-
   // "2 cups plus 2 tbsp flour" / "2 cups minus 2 tbsp" — second amount is a note
   const extraAmount = text.match(/\s+(plus|\+|minus)\s+(.+)$/i);
   if (extraAmount) {
@@ -447,6 +454,8 @@ function prepareIngredientLine(cleaned: string): PreparedLine {
   }
 
   text = moveBracketNotes(text, notes, isCountLine(text));
+  // Last, so a comma inside a bracket never splits the name
+  text = moveCommaNote(text, notes);
 
   const finalText = trimEdges(text.replace(/\s+/g, " "));
   const leadingMeasure = findMeasures(finalText)[0];
@@ -592,6 +601,39 @@ function moveBracketNotes(text: string, notes: string[], countLine = false): str
     i = close + 1;
   }
   return out;
+}
+
+/**
+ * Everything after the first comma outside brackets is a note when it starts with
+ * a prep/state phrase: "50 g butter, melted, cooled". The whole tail stays one
+ * note, and a segment already held by a bracket note ("(, finely chopped)") is
+ * dropped. A tail that is only a garnish phrase stays for the garnish branch.
+ */
+function moveCommaNote(text: string, notes: string[]): string {
+  let depth = 0;
+  let at = -1;
+  for (let i = 0; i < text.length; i += 1) {
+    if (text[i] === "(") depth += 1;
+    else if (text[i] === ")") depth = Math.max(0, depth - 1);
+    else if (text[i] === "," && depth === 0) {
+      at = i;
+      break;
+    }
+  }
+  if (at === -1) return text;
+  const head = text.slice(0, at);
+  const tail = text.slice(at + 1).trim();
+  const garnishOnly = hasGarnishPhrase(tail) && !stripGarnishPhrase(tail);
+  if (garnishOnly || !COMMA_NOTE_START.test(tail)) return text;
+
+  const segments = tail
+    .replace(/[()]/g, ", ")
+    .split(",")
+    .map((segment) => segment.trim())
+    .filter((segment) => segment && !notes.some((note) => note.includes(segment)));
+  const note = cleanNotes(segments.join(", "));
+  if (note) notes.push(note);
+  return trimEdges(head);
 }
 
 export function parseIngredientLine(line: string): Ingredient {

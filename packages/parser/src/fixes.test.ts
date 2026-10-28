@@ -99,8 +99,8 @@ describe("minus amounts", () => {
     expect(parseIngredientLine("2 cups plus 2 tbsp flour, sifted")).toMatchObject({
       quantity: 2,
       unit: "cup",
-      name: "flour, sifted",
-      notes: "plus 2 tbsp",
+      name: "flour",
+      notes: "sifted, plus 2 tbsp",
     });
   });
 });
@@ -243,11 +243,93 @@ describe("comma prep notes on a counted line", () => {
     expect(ing.name).not.toContain("medium");
   });
 
-  it("leaves a measured line and a real ingredient tail alone", () => {
+  it("treats a comma note the same way on a measured line", () => {
     expect(parseIngredientLine("1 cup flour, sifted")).toMatchObject({
-      name: "flour, sifted",
+      quantity: 1,
+      unit: "cup",
+      name: "flour",
+      notes: "sifted",
     });
     expect(parseIngredientLine("2 tomatoes, salt and pepper").name).toContain("salt and pepper");
+  });
+});
+
+describe("comma notes on any ingredient line", () => {
+  it("moves text after the name into the notes", () => {
+    expect(parseIngredientLine("50 g butter, melted, cooled")).toMatchObject({
+      quantity: 50,
+      unit: "g",
+      name: "butter",
+      notes: "melted, cooled",
+    });
+    expect(parseIngredientLine("1 brown onion, finely chopped")).toMatchObject({
+      quantity: 1,
+      unit: "",
+      name: "brown onion",
+      notes: "finely chopped",
+    });
+    expect(parseIngredientLine("1 cup milk, warmed")).toMatchObject({
+      quantity: 1,
+      unit: "cup",
+      name: "milk",
+      notes: "warmed",
+    });
+    expect(parseIngredientLine("salt, to taste")).toMatchObject({
+      quantity: 0,
+      unit: "",
+      name: "salt",
+      notes: "to taste",
+    });
+  });
+
+  it("merges a comma note with a bracket note without duplicating it", () => {
+    expect(parseIngredientLine("2 tsp parsley, finely chopped (, finely chopped)")).toMatchObject({
+      quantity: 2,
+      unit: "tsp",
+      name: "parsley",
+      notes: "finely chopped",
+    });
+  });
+
+  it("leaves a garnish tail for the garnish branch", () => {
+    expect(parseIngredientLine("fresh dill, for garnishing")).toMatchObject({
+      quantity: 0,
+      unit: "garnish",
+      name: "fresh dill",
+    });
+  });
+
+  it("leaves no stray comma or bracket at the edges of a name or note", () => {
+    for (const line of ["50 g butter, melted, cooled", "salt, to taste", "1 cup milk, warmed"]) {
+      const ing = parseIngredientLine(line);
+      expect(ing.name, line).not.toMatch(/^,|,$|\(\s*\)/);
+      if (ing.notes) expect(ing.notes, line).not.toMatch(/^,|,$|\(\s*\)/);
+    }
+  });
+});
+
+describe("abbreviations inside brackets", () => {
+  it("keeps 'w/o shell' in the note instead of the name", () => {
+    const ing = parseIngredientLine("1 large egg (50 g each w/o shell)");
+    expect(ing).toMatchObject({
+      quantity: 1,
+      unit: "",
+      name: "egg",
+      size: "large",
+      notes: "50 g each w/o shell",
+    });
+    expect(ing.name).not.toContain("(");
+    expect(ing.name).not.toMatch(/w\/o|w\s+o/);
+  });
+
+  it("still reads a bracket that closes at each, even with words after it", () => {
+    expect(parseIngredientLine("4 chicken breasts (150-180g each) skinless")).toMatchObject({
+      quantity: 4,
+      unit: "",
+      name: "chicken breast skinless",
+      size: "medium",
+      notes: "150-180 g each",
+    });
   });
 });
 

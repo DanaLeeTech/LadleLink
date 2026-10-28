@@ -237,7 +237,8 @@ describe("parseIngredientLine", () => {
     expect(parseIngredientLine("1 &frac14; teaspoon fine sea salt, divided, to taste")).toMatchObject({
       quantity: 1.25,
       unit: "tsp",
-      name: "fine sea salt, divided",
+      name: "fine sea salt",
+      notes: "divided, to taste",
     });
     expect(parseIngredientLine("½ teaspoon red pepper flakes")).toMatchObject({
       quantity: 0.5,
@@ -249,8 +250,9 @@ describe("parseIngredientLine", () => {
   it("parses bare to-taste lines with a blank quantity", () => {
     expect(parseIngredientLine("Freshly ground black pepper, to taste")).toMatchObject({
       quantity: 0,
-      unit: "to_taste",
+      unit: "",
       name: "Freshly ground black pepper",
+      notes: "to taste",
     });
   });
 
@@ -504,8 +506,8 @@ describe("ingredient line fixes", () => {
     expect(parseIngredientLine("2 cups plus 2 tbsp flour, sifted")).toMatchObject({
       quantity: 2,
       unit: "cup",
-      name: "flour, sifted",
-      notes: "plus 2 tbsp",
+      name: "flour",
+      notes: "sifted, plus 2 tbsp",
     });
     expect(parseIngredientLine("1 tbsp + 1 tsp sesame oil")).toMatchObject({
       quantity: 1,
