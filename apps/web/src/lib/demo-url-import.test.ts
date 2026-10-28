@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { importRecipeInBrowser } from "./demo-url-import";
+import { importRecipeInBrowser, looksLikeRealPage } from "./demo-url-import";
 
 const fixtures = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -26,8 +26,6 @@ const RECIPE_HTML = `<!doctype html>
  "recipeInstructions":[{"@type":"HowToStep","text":"Mix and cook."}]}
 </script>
 </head><body></body></html>`;
-
-const JUNK_HTML = "<!doctype html><html><body><p>rate limited</p></body></html>";
 
 /** Fake fetch: answers per URL (and request headers); anything else gets 403. */
 function fakeFetch(
@@ -53,7 +51,7 @@ describe("importRecipeInBrowser", () => {
 
   it("does not retry other readers when the page itself has no recipe", async () => {
     const calls: string[] = [];
-    const fetchImpl = fakeFetch(() => JUNK_HTML, calls);
+    const fetchImpl = fakeFetch(() => fixture("wikipedia-article.html"), calls);
     await assert.rejects(
       () => importRecipeInBrowser("https://example.com/pancakes", fetchImpl),
       /No recipe found/
@@ -62,6 +60,41 @@ describe("importRecipeInBrowser", () => {
     assert.equal(calls.length, 2);
     assert.match(calls[0]!, /r\.jina\.ai/);
     assert.match(calls[1]!, /r\.jina\.ai/);
+  });
+
+  it("tries another reader when the first returns a Cloudflare challenge", async () => {
+    const CHALLENGE =
+      "<!doctype html><html><head><title>Just a moment...</title></head><body><p>Checking your browser</p></body></html>";
+    const calls: string[] = [];
+    const fetchImpl = fakeFetch(
+      (url) => (url.includes("r.jina.ai") ? CHALLENGE : RECIPE_HTML),
+      calls
+    );
+    const recipe = await importRecipeInBrowser("https://example.com/pancakes", fetchImpl);
+    assert.equal(recipe.title, "Test Pancakes");
+    assert.ok(calls.some((url) => url.includes("allorigins")));
+  });
+
+  it("tries another reader when the first returns a blank or empty shell", async () => {
+    for (const blank of ["", "<!doctype html><html><body></body></html>"]) {
+      const calls: string[] = [];
+      const fetchImpl = fakeFetch((url) => (url.includes("r.jina.ai") ? blank : RECIPE_HTML), calls);
+      const recipe = await importRecipeInBrowser("https://example.com/pancakes", fetchImpl);
+      assert.equal(recipe.title, "Test Pancakes");
+      assert.ok(calls.some((url) => url.includes("allorigins")));
+    }
+  });
+
+  it("tells a real page from a challenge or blank shell", () => {
+    assert.equal(looksLikeRealPage(fixture("wikipedia-article.html")), true);
+    assert.equal(looksLikeRealPage(fixture("not-found.html")), false);
+    assert.equal(
+      looksLikeRealPage(
+        "<!doctype html><html><head><title>Just a moment...</title></head><body><p>Checking your browser</p></body></html>"
+      ),
+      false
+    );
+    assert.equal(looksLikeRealPage(""), false);
   });
 
   it("asks every reader before giving up", async () => {
@@ -136,6 +169,10 @@ describe("importRecipeInBrowser", () => {
     assert.equal(recipe.servings, 12);
     assert.equal(recipe.steps[0], "Preheat the oven to 180°C and line two trays.");
     assert.equal(recipe.sections?.[0].title, "For the dough");
+    assert.equal(
+      recipe.photoUrl,
+      "https://www.coles.com.au/content/dam/coles/choc-chip-cookies.jpg"
+    );
   });
 
   it("falls back to rendered markdown when every HTML reader gets a JS shell", async () => {

@@ -2,6 +2,7 @@ import * as cheerio from "cheerio";
 import type { ParsedRecipe, RecipeSection } from "@ladlelink/types";
 import { parseIngredientLine, parseServings } from "./ingredient-line.js";
 import { looksLikeIngredientLine } from "./plaintext.js";
+import { resolvePhotoUrl } from "./photo-url.js";
 
 /** Page chrome that never holds recipe content. */
 const CHROME = "script, style, noscript, nav, header, footer, aside, [role='navigation']";
@@ -198,10 +199,11 @@ export function parseHeuristic(html: string, sourceUrl: string): ParsedRecipe | 
   const measured = ingredients.items.filter((line) => LOOKS_MEASURED.test(line)).length;
   if (measured < 3 || !steps.items.length) return null;
 
-  const photoUrl =
+  const photoUrl = resolvePhotoUrl(
     $('meta[property="og:image"]').attr("content") ||
-    $("article img, .recipe img, img").first().attr("src") ||
-    null;
+      $("article img, .recipe img, img").first().attr("src"),
+    sourceUrl
+  );
 
   const sections = [...ingredients.sections, ...steps.sections].filter(
     (section) => section.at <= (section.kind === "ingredients" ? ingredients.items.length : steps.items.length)

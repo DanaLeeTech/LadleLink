@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio";
 import type { ParsedRecipe, RecipeSection } from "@ladlelink/types";
 import { asStringArray, cleanRecipeText, parseIngredientLine, parseServings } from "./ingredient-line.js";
+import { resolvePhotoUrl } from "./photo-url.js";
 
 function isRecipeType(type: unknown): boolean {
   if (!type) return false;
@@ -90,7 +91,7 @@ function recipeFromJsonLd(
   const { steps, sections } = instructionsWithSections(
     obj.recipeInstructions ?? obj.instructions
   );
-  const photoUrl = imageUrlFrom(obj.image) ?? fallbackImage;
+  const photoUrl = resolvePhotoUrl(imageUrlFrom(obj.image) ?? fallbackImage, sourceUrl);
 
   const title = String(obj.name ?? obj.headline ?? "Untitled recipe").trim();
 

@@ -67,7 +67,7 @@ const CONVERSION_ALIAS_SEEDS: Record<string, string[]> = {
     "sodium bicarbonate",
   ],
   "baking powder": ["baking powder"],
-  "table salt": ["table salt", "salt", "fine salt", "iodized salt"],
+  "table salt": ["table salt", "salt", "fine salt", "iodized salt", "sel"],
   "sea salt": ["sea salt", "fine sea salt", "flaky sea salt", "flaky salt"],
   "kosher salt": ["kosher salt"],
   oil: [
@@ -78,6 +78,7 @@ const CONVERSION_ALIAS_SEEDS: Record<string, string[]> = {
     "sunflower oil",
     "neutral oil",
     "cooking oil",
+    "huile",
   ],
   "olive oil": [
     "olive oil",
@@ -189,7 +190,6 @@ const CONVERSION_ALIAS_SEEDS: Record<string, string[]> = {
     "sage",
     "dried sage",
     "marjoram",
-    "tarragon",
     "italian seasoning",
     "herbes de provence",
     "paprika",

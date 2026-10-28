@@ -16,6 +16,7 @@ export {
 export { parseJsonLd } from "./jsonld.js";
 export { parseMicrodata } from "./microdata.js";
 export { parseHeuristic } from "./heuristic.js";
+export { resolvePhotoUrl } from "./photo-url.js";
 export {
   parseRecipeText,
   repairOcrLine,
@@ -23,6 +24,17 @@ export {
   looksLikeIngredientLine,
   scoreParsedRecipe,
 } from "./plaintext.js";
+
+/**
+ * The page was readable but held no recipe. Callers can tell this apart from an
+ * unexpected parser failure: the same page from another reader won't help.
+ */
+export class NotARecipeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NotARecipeError";
+  }
+}
 
 export const USER_AGENT =
   "LadleLink/0.1 (+local; user-initiated recipe import; not a crawler)";
@@ -76,13 +88,13 @@ export function parseRecipeHtml(html: string, sourceUrl: string): ParsedRecipe {
     parseHeuristic(html, sourceUrl);
 
   if (!parsed) {
-    throw new Error("Could not extract a recipe from this page");
+    throw new NotARecipeError("Could not extract a recipe from this page");
   }
 
   // Drop empty ingredient rows; decode entities in free text fields
   parsed.ingredients = parsed.ingredients.filter((i) => i.name.trim().length > 0);
   if (!parsed.ingredients.length) {
-    throw new Error("Could not extract ingredients from this page");
+    throw new NotARecipeError("Could not extract ingredients from this page");
   }
   parsed.title = cleanRecipeTitle(cleanRecipeText(parsed.title));
   parsed.steps = parsed.steps

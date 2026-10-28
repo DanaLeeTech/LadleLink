@@ -372,7 +372,7 @@ function guessGroup(label: string): SuggestionGroup {
   if (
     hasWord(
       l,
-      "parsley|cilantro|coriander|dill|rosemary|sage|mint|chive|garlic|ginger|bay\\s*leaf|lemongrass"
+      "parsley|cilantro|coriander|dill|rosemary|sage|mint|chive|garlic|ginger|herb|bay\\s*leaf|lemongrass"
     ) ||
     /\bbay\b/.test(l)
   ) {

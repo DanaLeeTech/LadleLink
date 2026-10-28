@@ -17,7 +17,7 @@ const EXPECTED: Record<string, string[]> = {
       ", "
     ),
   "Herbs & aromatics":
-    "basil, bay leaf, chives, coriander, dill, garlic, ginger, mint, oregano, parsley, rosemary, sage, thyme".split(
+    "basil, bay leaf, chives, coriander, dill, garlic, ginger, herb, mint, oregano, parsley, rosemary, sage, thyme".split(
       ", "
     ),
   Protein:
@@ -150,7 +150,7 @@ describe("Measure as… dropdown", () => {
     assert.deepEqual(Object.fromEntries(GROUPED.map((g) => [g.group, g.items])), EXPECTED);
 
     const labels = GROUPED.flatMap((g) => g.items);
-    assert.equal(labels.length, 471);
+    assert.equal(labels.length, 472);
     assert.equal(new Set(labels).size, labels.length, "a label appears in two groups");
     for (const hidden of HIDDEN) {
       assert.ok(!labels.includes(hidden), `hidden label still shown: ${hidden}`);

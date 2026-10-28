@@ -7,7 +7,7 @@
  * recipe is then extracted in the visitor's browser by the same parser the
  * server would have used.
  */
-import { parseRecipeHtml, parseRecipeText } from "@ladlelink/parser";
+import { NotARecipeError, parseRecipeHtml, parseRecipeText } from "@ladlelink/parser";
 import type { ParsedRecipe } from "@ladlelink/types";
 
 const SOURCE_TIMEOUT_MS = 6000;
@@ -51,7 +51,31 @@ function assertHttpUrl(url: string): string {
 
 /** Page chrome, 404s and challenge screens that must never pass as a recipe. */
 const JUNK_TITLE =
-  /^(?:untitled recipe|(?:404|403|500)\b|not found|page not found|access denied|forbidden|just a moment|attention required|error\b)/i;
+  /^(?:untitled recipe|(?:404|403|500)\b|not found|page not found|access denied|forbidden|just a moment|attention required|verify you are human|checking your browser|error\b)/i;
+
+/** Below this, a response is a shell (blank, JS app, rate-limit notice), not a page. */
+const MIN_PAGE_CHARS = 200;
+
+/** Visible text with tags, scripts and styles stripped. */
+function visibleText(html: string): string {
+  return html
+    .replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Whether a reader returned the real page or a challenge/blank shell. A real
+ * page has a usable title or real body text; a Cloudflare interstitial, a 4xx
+ * screen or an empty body means another reader is worth a try.
+ */
+export function looksLikeRealPage(html: string): boolean {
+  if (html.trim().length < MIN_PAGE_CHARS) return false;
+  const title = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1]?.trim() ?? "";
+  if (JUNK_TITLE.test(title)) return false;
+  return title.length > 0 || visibleText(html).length >= MIN_PAGE_CHARS;
+}
 
 /**
  * Acceptance gate for the markdown fallback — the same shape the HTML heuristic
@@ -119,11 +143,16 @@ export async function importRecipeInBrowser(
     try {
       const parsed = parseRecipeHtml(html, target);
       if (parsed.title.trim()) return parsed;
-    } catch {
-      // The page came back but is not a recipe. Every reader returns the same
-      // page, so retrying them only wastes the visitor's time.
+    } catch (err) {
+      // Cancel wins over anything the parser says.
+      if (signal?.aborted) throw new Error("Import cancelled");
+      // An unexpected parser failure says nothing about the page — try a reader.
+      if (!(err instanceof NotARecipeError)) continue;
     }
-    break;
+    // The page came back but holds no recipe. A real page means every reader
+    // returns the same thing, so retrying them only wastes the visitor's time; a
+    // challenge, blank or very short shell means another reader may get through.
+    if (looksLikeRealPage(html)) break;
   }
 
   // JS-rendered and Cloudflare-protected pages have no recipe in their raw HTML.

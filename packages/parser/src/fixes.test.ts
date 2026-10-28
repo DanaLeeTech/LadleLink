@@ -105,8 +105,98 @@ describe("minus amounts", () => {
   });
 });
 
+describe("bracket notes in the RecipeTin style", () => {
+  it("moves '(, …)' text into the notes", () => {
+    expect(parseIngredientLine("1-2 tbsp water (, as needed)")).toMatchObject({
+      quantity: 1,
+      quantityMax: 2,
+      unit: "tbsp",
+      name: "water",
+      notes: "as needed",
+    });
+    expect(parseIngredientLine("2 tsp parsley (, finely chopped)")).toMatchObject({
+      quantity: 2,
+      unit: "tsp",
+      name: "parsley",
+      notes: "finely chopped",
+    });
+  });
+
+  it("flattens nested brackets into one note without touching the spacing", () => {
+    expect(
+      parseIngredientLine(
+        "700g / 1.4 lb chicken thigh fillets (, skinless boneless (4 - 6 pieces, Note 1))"
+      )
+    ).toMatchObject({
+      quantity: 700,
+      unit: "g",
+      name: "chicken thigh fillets",
+      notes: "skinless boneless, 4 - 6 pieces, Note 1",
+    });
+  });
+
+  it("leaves parenthetical conversions for the dual-measure rules", () => {
+    expect(parseIngredientLine("2 cups (281g) flour")).toMatchObject({
+      quantity: 281,
+      unit: "g",
+      name: "flour",
+    });
+    expect(parseIngredientLine("1 can (14 oz) tomatoes")).toMatchObject({
+      quantity: 14,
+      unit: "oz",
+      name: "tomatoes",
+    });
+  });
+});
+
+describe("pack size and bracket notes after the name", () => {
+  it("moves a pack size that follows a bare count into the notes", () => {
+    expect(parseIngredientLine("1 (400g) can chickpeas")).toMatchObject({
+      quantity: 1,
+      unit: "can",
+      name: expect.stringMatching(/^chickpeas?$/),
+      notes: "400 g",
+    });
+  });
+
+  it("leaves a bracket after a unit to the dual-measure rule", () => {
+    expect(parseIngredientLine("2 cups (281g) flour")).toMatchObject({
+      quantity: 281,
+      unit: "g",
+      name: "flour",
+    });
+  });
+
+  it("moves a comma-led prep note after the name", () => {
+    expect(parseIngredientLine("2 eggs, (beaten)")).toMatchObject({
+      quantity: 2,
+      unit: "",
+      name: expect.stringMatching(/^eggs?$/),
+      notes: "beaten",
+    });
+  });
+
+  it("moves a thickness and a per-piece note after the name", () => {
+    const ing = parseIngredientLine(
+      "2 boneless pork loin chops (0.5 inch thick) (100 g, per piece; 1 - 2 pieces)"
+    );
+    expect(ing).toMatchObject({
+      quantity: 2,
+      unit: "",
+      name: "boneless pork loin chops",
+    });
+    expect(ing.notes).toContain("0.5 inch thick");
+    expect(ing.notes).toContain("100 g, per piece; 1 - 2 pieces");
+  });
+
+  it("reads French huile and sel as oil and table salt", () => {
+    expect(parseIngredientLine("2 c. à soupe huile").conversionKey).toBe("oil");
+    expect(parseIngredientLine("1 c. à café sel").conversionKey).toBe("table salt");
+  });
+});
+
 describe("clean names and notes", () => {
-  const JUNK = /\(\s*\)|\(\s*,|^\s*,|,\s*$|\[\s*\]/;
+  const JUNK = /\(\s*\)|\(\s*,|\(\s|^\s*,|,\s*$|\[\s*\]/;
 
   it("never leaves empty brackets or stray commas", () => {
     const lines = [
@@ -114,11 +204,15 @@ describe("clean names and notes", () => {
       "4  chicken breasts (, 150 - 180g / 5 - 6 oz each (Note 1))",
       "1/2 tsp each salt and pepper",
       "2 cups minus 2 tbsp cake flour",
+      "1-2 tbsp water (, as needed)",
+      "2 tsp parsley (, finely chopped)",
+      "700g / 1.4 lb chicken thigh fillets (, skinless boneless (4 - 6 pieces, Note 1))",
     ];
     for (const line of lines) {
       const ing = parseIngredientLine(line);
       expect(ing.name, line).not.toMatch(JUNK);
       expect(ing.name.startsWith("("), line).toBe(false);
+      expect(ing.name.split("(").length, line).toBe(ing.name.split(")").length);
       if (ing.notes) expect(ing.notes, line).not.toMatch(JUNK);
     }
   });

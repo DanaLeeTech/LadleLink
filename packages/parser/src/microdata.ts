@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio";
 import type { ParsedRecipe } from "@ladlelink/types";
 import { parseIngredientLine, parseServings } from "./ingredient-line.js";
+import { resolvePhotoUrl } from "./photo-url.js";
 
 export function parseMicrodata(html: string, sourceUrl: string): ParsedRecipe | null {
   const $ = cheerio.load(html);
@@ -60,10 +61,11 @@ export function parseMicrodata(html: string, sourceUrl: string): ParsedRecipe | 
   }
 
   const yieldText = recipeEl.find('[itemprop="recipeYield"]').first().text();
-  const photoUrl =
+  const photoUrl = resolvePhotoUrl(
     recipeEl.find('[itemprop="image"]').attr("src") ||
-    recipeEl.find('[itemprop="image"]').attr("content") ||
-    null;
+      recipeEl.find('[itemprop="image"]').attr("content"),
+    sourceUrl
+  );
 
   if (!ingredients.length) return null;
 

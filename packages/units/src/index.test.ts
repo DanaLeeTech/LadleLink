@@ -499,6 +499,18 @@ describe("conversion keys", () => {
     expect(lookupDensity("spice")?.densityGPerMl).toBeCloseTo(0.25, 3);
   });
 
+  it("keeps tarragon on its own herb row, apart from the spice catch-all", () => {
+    expect(inferConversionKey("tarragon")).toBe("herb");
+    expect(inferConversionKey("fresh tarragon")).toBe("herb");
+    expect(lookupDensity("tarragon")?.key).toBe("herb");
+    expect(lookupDensity("tarragon")?.densityGPerMl).toBeCloseTo(0.25, 3);
+  });
+
+  it("reads French huile and sel as oil and table salt", () => {
+    expect(inferConversionKey("huile")).toBe("oil");
+    expect(inferConversionKey("sel")).toBe("table salt");
+  });
+
   it("maps powder names to spice unless a non-produce catalog match wins", () => {
     expect(inferConversionKey("curry powder")).toBe("spice");
     expect(inferConversionKey("asafoetida powder")).toBe("spice");

@@ -212,6 +212,12 @@ const HAND_DENSITY_OVERRIDES: DensityEntry[] = [
   },
   { key: "rice", aliases: ["rice", "white rice", "uncooked rice"], densityGPerMl: 0.7708, kind: "dry" },
   { key: "oats", aliases: ["oats", "rolled oats", "oatmeal"], densityGPerMl: 0.3375, kind: "dry" },
+  {
+    key: "herb",
+    aliases: ["herb", "herbs", "tarragon", "fresh tarragon", "dried tarragon"],
+    densityGPerMl: 0.25,
+    kind: "dry",
+  },
   /**
    * Catch-all for dried herbs & ground spices (~1 g/tsp leafy herbs).
    * Fresh soft herbs (basil, parsley, cilantro) stay on their own rows.
@@ -236,7 +242,6 @@ const HAND_DENSITY_OVERRIDES: DensityEntry[] = [
       "sage",
       "dried sage",
       "marjoram",
-      "tarragon",
       "italian seasoning",
       "herbes de provence",
       "paprika",

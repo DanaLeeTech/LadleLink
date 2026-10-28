@@ -6,7 +6,6 @@ import {
   inferConversionKey,
   massUnitToGrams,
   PRODUCE_UNIT_SET,
-  singularizeName,
   unitFamily,
   unitLabel,
   unitPatternAlternation,
@@ -279,6 +278,12 @@ const PACKED_MULTIPLIER_RE = new RegExp(
   "i"
 );
 
+/** "1 (400g) can chickpeas" — a pack size directly after a bare count is a note. */
+const LEADING_PACK_BRACKET_RE = new RegExp(
+  `^(\\d+(?:\\.\\d+)?)\\s*\\(\\s*(\\d+(?:\\.\\d+)?)\\s*${UNIT_PATTERN}\\.?\\s*\\)\\s+`,
+  "i"
+);
+
 /** "heaped tbsp", "level teaspoon" — the modifier moves to the notes. */
 const HEAPED_RE = new RegExp(
   `^(\\d+(?:\\.\\d+)?)\\s+(heaped|heaping|level|rounded|generous|scant)\\s+(?=${UNIT_PATTERN})`,
@@ -381,6 +386,13 @@ function prepareIngredientLine(cleaned: string): PreparedLine {
     }
   }
 
+  const leadPack = text.match(LEADING_PACK_BRACKET_RE);
+  if (leadPack) {
+    const unit = unitLabel(canonicalizeUnit(leadPack[3] ?? ""));
+    notes.push(`${leadPack[2]} ${unit}`.replace(/\s+/g, " ").trim());
+    text = text.replace(leadPack[0], `${leadPack[1]} `);
+  }
+
   const packed = text.match(PACKED_MULTIPLIER_RE);
   if (packed) {
     const unit = unitLabel(canonicalizeUnit(packed[3] ?? ""));
@@ -413,6 +425,8 @@ function prepareIngredientLine(cleaned: string): PreparedLine {
     }
   }
 
+  text = moveBracketNotes(text, notes);
+
   const finalText = trimEdges(text.replace(/\s+/g, " "));
   const leadingMeasure = findMeasures(finalText)[0];
   return {
@@ -439,6 +453,89 @@ function cleanNotes(note: string): string {
       .replace(/^[\s,;:()\[\]\-–—]+|[\s,;:()\[\]\-–—]+$/g, "");
   }
   return out.replace(/\s+/g, " ").trim();
+}
+
+/** RecipeTin writes extras as "(, note)" — the leading comma marks a note group. */
+const NOTE_GROUP_RE = /^\s*[,;]/;
+
+/** "0.5 inch thick" — a dimension is a note too, though it is not a cooking unit. */
+const DIMENSION_RE = /\d+(?:\.\d+)?\s*-?\s*(?:inch(?:es)?|in\.|cm|mm|["”])/gi;
+
+/** Bracket text left once the amounts in it are taken out. */
+function bracketExtras(content: string): string {
+  let out = content;
+  for (const measure of [...findMeasures(content)].sort((a, b) => b.index - a.index)) {
+    out = `${out.slice(0, measure.index)} ${out.slice(measure.index + measure.length)}`;
+  }
+  return out.replace(DIMENSION_RE, " ").replace(/[^a-zA-Z]+/g, " ").trim();
+}
+
+/** True when the bracket text holds a cooking measure or a dimension. */
+function hasAmount(content: string): boolean {
+  return findMeasures(content).length > 0 || content.match(DIMENSION_RE) != null;
+}
+
+/** True when a bracket holds an amount and nothing else ("281g", "about 4 cups"). */
+function isAmountOnlyBracket(content: string): boolean {
+  return hasAmount(content) && !bracketExtras(content);
+}
+
+/** "0.5 inch thick", "100 g, per piece; 1 - 2 pieces" — a measure plus extra words. */
+function isMeasuredNoteBracket(content: string): boolean {
+  return hasAmount(content) && bracketExtras(content).length > 0;
+}
+
+/**
+ * Move bracket groups that are notes into `notes`, flattening nested brackets
+ * into one note. Amount-only brackets ("(281g)") and other text such as
+ * "(warm)" stay in place: the dual-measure and parenthetical rules in
+ * parseIngredientCore need them.
+ * shortcut: only a leading comma/colon, a comma before the group, or a measure
+ * plus extra words makes a note group; widen this if more sites need it.
+ */
+function moveBracketNotes(text: string, notes: string[]): string {
+  let out = "";
+  let i = 0;
+  while (i < text.length) {
+    const open = text.indexOf("(", i);
+    if (open === -1) {
+      out += text.slice(i);
+      break;
+    }
+    out += text.slice(i, open);
+    let depth = 0;
+    let close = -1;
+    for (let j = open; j < text.length; j += 1) {
+      if (text[j] === "(") depth += 1;
+      else if (text[j] === ")" && --depth === 0) {
+        close = j;
+        break;
+      }
+    }
+    // Unbalanced bracket: leave the rest for cleanName to trim
+    if (close === -1) {
+      out += text.slice(open);
+      break;
+    }
+    const content = text.slice(open + 1, close);
+    // "(- 118 milliliters - note)" is the conversion style: core rules own those
+    const conversionGroup = /^\s*-/.test(content);
+    // Nested brackets are the "((warm) - 118 ml)" conversion style too
+    const noteGroup =
+      !conversionGroup &&
+      (NOTE_GROUP_RE.test(content) ||
+        (isMeasuredNoteBracket(content) && !content.includes("(")) ||
+        (/,\s*$/.test(out) && !isAmountOnlyBracket(content)));
+    if (noteGroup) {
+      const note = cleanNotes(content.replace(/[()]/g, ", ").replace(/\s*,\s*/g, ", "));
+      if (note) notes.push(note);
+      out += " ";
+    } else {
+      out += text.slice(open, close + 1);
+    }
+    i = close + 1;
+  }
+  return out;
 }
 
 export function parseIngredientLine(line: string): Ingredient {
@@ -713,9 +810,6 @@ function finalize(ing: {
   if (/to\s*taste/i.test(name)) {
     name = stripToTastePhrase(name) || name;
   }
-
-  // "1 x 400 g tin diced tomatoes" → "diced tomato"
-  if (quantity === 1) name = singularizeName(name);
 
   const result: Ingredient = { quantity, unit, name };
   if (size) result.size = size;

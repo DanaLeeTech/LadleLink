@@ -625,17 +625,25 @@ describe("ingredient line fixes", () => {
     }
   });
 
-  it("singularizes an ordinary name for a quantity of one", () => {
+  it("keeps the original item text for a quantity of one", () => {
     expect(parseIngredientLine("1 x 400g tin tomatoes")).toMatchObject({
       quantity: 1,
       unit: "tin",
-      name: "tomato",
+      name: "tomatoes",
       notes: "400 g each",
     });
-    expect(parseIngredientLine("1 x 400g tin diced tomatoes").name).toBe("diced tomato");
-    // Still plural when there is more than one tin
+    expect(parseIngredientLine("1 x 400g tin diced tomatoes").name).toBe("diced tomatoes");
     expect(parseIngredientLine("2 x 400g tins diced tomatoes").name).toBe("diced tomatoes");
-    expect(parseIngredientLine("1 cup crushed tomatoes").name).toBe("crushed tomato");
+    expect(parseIngredientLine("1 cup crushed tomatoes").name).toBe("crushed tomatoes");
+  });
+
+  it("keeps the plural name when a can is selected", () => {
+    expect(parseIngredientLine("1 (400g) can chickpeas")).toMatchObject({
+      quantity: 1,
+      unit: "can",
+      name: "chickpeas",
+      notes: "400 g",
+    });
   });
 
   it("moves a parenthetical heaped/level word after the unit into the notes", () => {
@@ -1120,6 +1128,10 @@ describe("import reliability", () => {
       "Preheat the oven to 180°C and line two trays.",
       "Mix the dough, roll into balls and bake for 12 minutes.",
     ]);
+    // Root-relative og:image belongs to Coles, not to the app's own origin
+    expect(recipe.photoUrl).toBe(
+      "https://www.coles.com.au/content/dam/coles/choc-chip-cookies.jpg"
+    );
   });
 
   it("treats a mid-list h2 as a section heading, not the end of the list", () => {
