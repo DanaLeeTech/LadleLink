@@ -109,6 +109,13 @@ function collectRegion(
   return { items, sections };
 }
 
+/** Element text without screen-reader duplicates (Coles prints "Serves 4" twice). */
+function visibleText($: cheerio.CheerioAPI, $el: cheerio.Cheerio<any>): string {
+  const $clone = $el.clone();
+  $clone.find('[aria-hidden="true"]').remove();
+  return $clone.text().replace(/\s+/g, " ").trim();
+}
+
 /** First "Serves 4" / "4 servings" on the page, including split label/value markup. */
 function findServingsText($: cheerio.CheerioAPI): string {
   const candidates = $("*")
@@ -119,7 +126,7 @@ function findServingsText($: cheerio.CheerioAPI): string {
     .toArray();
 
   for (const el of candidates) {
-    const t = text($(el));
+    const t = visibleText($, $(el));
     const after = t.match(/(?:servings?|serves|yield|makes)\s*:?\s*(\d+(?:\.\d+)?)/i);
     if (after) return after[1];
     const before = t.match(/(\d+(?:\.\d+)?)\s*(?:servings?|serves|people)\b/i);

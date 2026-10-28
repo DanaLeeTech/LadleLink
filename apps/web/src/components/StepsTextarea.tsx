@@ -7,6 +7,7 @@ interface StepsTextareaProps {
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
+  "aria-label"?: string;
 }
 
 /** Steps editor that turns typed `1/4` into `¼` (and similar fractions). */
@@ -16,6 +17,7 @@ export function StepsTextarea({
   value,
   onChange,
   required,
+  "aria-label": ariaLabel,
 }: StepsTextareaProps) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [cursor, setCursor] = useState<number | null>(null);
@@ -33,6 +35,7 @@ export function StepsTextarea({
       rows={rows}
       value={value}
       required={required}
+      aria-label={ariaLabel}
       onChange={(e) => {
         const el = e.target;
         const { text, cursor: nextCursor } = replaceAsciiFractions(

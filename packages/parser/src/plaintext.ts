@@ -1,6 +1,7 @@
 import type { ParsedRecipe } from "@ladlelink/types";
 import {
   cleanRecipeText,
+  cleanRecipeTitle,
   parseIngredientLine,
   parseServings,
   stripStepNumber,
@@ -14,7 +15,12 @@ const STEPS_HEADER = /^(instructions?|directions?|method|steps?)\b[:\s\-–—]*
 const MD_HEADING = /^\s*#{1,6}\s+(.+?)(?:\s+#+)?\s*$/;
 const METADATA_LINE =
   /^(prep(?:\s*time)?|bake(?:\s*time)?|cook(?:\s*time)?|total(?:\s*time)?|temperature|temp|servings?|serves|yield|makes)\b/i;
-const SERVINGS_LINE = /^(servings?|serves|yield|makes)\b/i;
+/**
+ * Servings metadata lines. "Pour 4 personnes" is French servings text — never a
+ * bare "pour", which would swallow steps like "Pour the batter…".
+ */
+const SERVINGS_LINE =
+  /^(?:servings?|serves|yield|makes)\b|^pour\s+\d+\s+personnes?\b/i;
 /** Common bullets plus frequent emoji used as list markers in social captions. */
 const BULLET_PREFIX = /^\s*(?:[-*•●◦▪▫✅✔☑☐🥣🥄🧂🍪]|[\u{1F300}-\u{1F9FF}])\s*/u;
 
@@ -71,7 +77,8 @@ function isBlank(line: string): boolean {
 
 /** True for status-bar clocks and other weak title candidates. */
 export function isWeakTitleCandidate(line: string): boolean {
-  const t = line.trim();
+  // Markdown emphasis wrappers are not part of the title's letters
+  const t = line.trim().replace(/^[*_]+|[*_]+$/g, "");
   if (!t) return true;
   if (/^\d{1,2}:\d{2}\b/.test(t)) return true;
   const letters = (t.match(/[A-Za-z]/g) || []).length;
@@ -95,14 +102,25 @@ export function isNoiseLine(line: string, fromHeading = false): boolean {
   if (PRICING_CHATTER.test(t)) return true;
   if (/^\d{1,2}:\d{2}\b/.test(t)) return true;
   if (/^#[\w.\s#]+$/.test(t) && t.includes("#")) return true;
+  // A word wrapped in Markdown emphasis is a heading/title, not a username
+  if (/^[*_]{1,3}[^*_].*[*_]{1,3}$/.test(t)) return false;
   // Lone Instagram-style username
   if (!fromHeading && /^[a-z0-9._]{3,30}$/i.test(t) && !LEADING_QTY.test(t)) {
     if (!/\b(?:cup|tsp|tbsp|ball|balls|mix|bake|recipe|flour|milk|egg|oat|oats)\b/i.test(t)) {
       return true;
     }
   }
+  if (isTitleWithSiteSuffix(t)) return false;
   if (isLowQualityOcrJunk(t)) return true;
   return false;
+}
+
+/**
+ * Page titles often carry a site suffix ("Pancakes | Woolworths"); the pipe in
+ * them is not the OCR/UI junk the line filter is hunting.
+ */
+function isTitleWithSiteSuffix(line: string): boolean {
+  return /^[\p{L}\p{N}][\p{L}\p{N}'’&.\- ]*\s\|\s[\p{L}\p{N}'’&.\- ]+$/u.test(line);
 }
 
 function isLowQualityOcrJunk(line: string): boolean {
@@ -387,9 +405,9 @@ export function parseRecipeText(text: string): ParsedRecipe {
   }
 
   // Strip trailing OCR/social crumbs on titles ("… $5! @ #4")
-  const cleanedTitle = (headingTitle || title || "Untitled recipe")
-    .replace(/\s*[@#][\s#\d!?.]*$/g, "")
-    .trim();
+  const cleanedTitle = cleanRecipeTitle(
+    (headingTitle || title || "Untitled recipe").replace(/\s*[@#][\s#\d!?.]*$/g, "")
+  ).trim();
 
   return {
     title: cleanedTitle || "Untitled recipe",

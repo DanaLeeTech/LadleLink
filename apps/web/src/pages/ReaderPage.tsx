@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import type { MeasurementPrefs, ProduceSize, Recipe } from "@ladlelink/types";
 import { DEFAULT_MEASUREMENT_PREFS } from "@ladlelink/types";
 import { scaleRecipeIngredients } from "@ladlelink/scaling";
-import { canonicalizeUnit, pluralUnitLabel, unitFamily } from "@ladlelink/units";
+import { canonicalizeUnit, pluralProduceName, pluralUnitLabel, unitFamily } from "@ladlelink/units";
 import {
   isValidServings,
   ServingsInput,
@@ -311,6 +311,15 @@ export function ReaderPage() {
           </p>
         )}
         {recipe.notes && <p className="lede">{recipe.notes}</p>}
+        {recipe.tags.length > 0 && (
+          <ul className="tag-chips" aria-label="Tags">
+            {recipe.tags.map((tag) => (
+              <li key={tag} className="chip">
+                {tag}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="toolbar">
@@ -417,8 +426,12 @@ export function ReaderPage() {
               : String(ing.unit || authored.unit || "");
           const showSize = !includeSizes && Boolean(ing.size);
           const lineStartsWithQty = Boolean(ing.displayQuantity);
-          const unitLabel = pluralUnitLabel(unitText, ing.quantityMax ?? ing.quantity);
-          const displayName = softenNameCase(ing.name);
+          const qtyForPlural = ing.quantityMax ?? ing.quantity;
+          const unitLabel = pluralUnitLabel(unitText, qtyForPlural);
+          // Same rule as the import preview: a countable name pluralizes itself.
+          const displayName = softenNameCase(
+            ing.unit ? ing.name : pluralProduceName(ing.name, qtyForPlural)
+          );
           // Match import preview: sentence-case the first token when the line has no qty.
           const nameLeadsLine = !lineStartsWithQty && !showSize && !fixedUnit && !showMeasure;
 
@@ -447,6 +460,7 @@ export function ReaderPage() {
                   <UnitSelect
                     className="unit-select unit-select--reader"
                     value={measureValue}
+                    quantity={qtyForPlural}
                     allowEmpty={false}
                     includeSizes={includeSizes}
                     allowedCountable={

@@ -69,7 +69,7 @@ describe("pasted text", () => {
     );
 
     expect(recipe.ingredients).toHaveLength(4);
-    expect(recipe.ingredients[0]).toMatchObject({ quantity: 2, unit: "tbsp", name: "d'huile" });
+    expect(recipe.ingredients[0]).toMatchObject({ quantity: 2, unit: "tbsp", name: "huile" });
     expect(recipe.ingredients[1]).toMatchObject({ quantity: 200, unit: "ml", name: "crème" });
     expect(recipe.ingredients[2]).toMatchObject({ quantity: 500, unit: "g", name: "bœuf" });
     expect(recipe.ingredients[3]).toMatchObject({ quantity: 150, unit: "ml", name: "lait" });

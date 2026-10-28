@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
   conversionCatalogLabels,
   expandNameVariants,
@@ -509,17 +509,20 @@ function useDebouncedValue<T>(value: T, delayMs = 150): T {
 /** Conversion-base select: Matches first, then grouped catalog. Empty shows —. */
 export function MeasureAsSelect({ name, conversionKey, onChange }: MeasureAsSelectProps) {
   const debouncedName = useDebouncedValue(name);
+  // Rebuilding several hundred <option>s must not block the keypress that caused
+  // it: React may interrupt this render and finish it in the background.
+  const deferredName = useDeferredValue(debouncedName);
 
   // Exact alias hit (e.g. "scallion", "water chestnut") wins over fuzzy matches.
   const exactKept = useMemo(() => {
-    const typed = debouncedName.trim().toLowerCase();
+    const typed = deferredName.trim().toLowerCase();
     if (!typed) return "";
     for (const variant of expandNameVariants(typed)) {
       const kept = EXACT_KEPT_BY_NAME[variant];
       if (kept) return kept;
     }
     return "";
-  }, [debouncedName]);
+  }, [deferredName]);
 
   const matches = useMemo(() => {
     const kept: string[] = [];
@@ -528,14 +531,14 @@ export function MeasureAsSelect({ name, conversionKey, onChange }: MeasureAsSele
       seen.add(exactKept);
       kept.push(exactKept);
     }
-    for (const label of matchingConversionLabels(debouncedName)) {
+    for (const label of matchingConversionLabels(deferredName)) {
       const mapped = DROPDOWN_ALIASES[label.toLowerCase()] ?? label;
       if (seen.has(mapped)) continue;
       seen.add(mapped);
       kept.push(mapped);
     }
     return kept;
-  }, [debouncedName, exactKept]);
+  }, [deferredName, exactKept]);
   const matchSet = useMemo(() => new Set(matches), [matches]);
 
   // Prefer stored key; then an exact alias hit; then a confident match.

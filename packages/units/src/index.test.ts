@@ -454,6 +454,18 @@ describe("conversion keys", () => {
     expect(conversionMatchIndexBuildCount()).toBe(builds);
   });
 
+  it("normalises a long noisy name inside a few milliseconds", () => {
+    // The 150 ms debounce still fires this once per pause: normalisation has to
+    // stay cheap (noise phrases are compiled once at module load).
+    const name =
+      "fresh organic finely chopped brown onions, room temperature, plus more for garnish " +
+      "and as needed for serving, coarsely grated carrots";
+    expect(matchingConversionLabels(name).length).toBeGreaterThan(0);
+    const started = performance.now();
+    for (let i = 0; i < 300; i++) matchingConversionLabels(name);
+    expect((performance.now() - started) / 300).toBeLessThan(5);
+  });
+
   it("keeps conversions working for dropdown labels", () => {
     expect(convertIngredient({ quantity: 1, unit: "cup", name: "carrot" }, "g", metric).quantity).toBe(
       199

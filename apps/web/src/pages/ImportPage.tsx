@@ -16,6 +16,7 @@ import {
 import { StepsTextarea } from "../components/StepsTextarea";
 import { useRepository } from "../data/RepositoryProvider";
 import { formatStepsForEditor, parseStepsFromEditor } from "../lib/steps-text";
+import { mergeStepSections, splitStepsBySection } from "../lib/steps-sections";
 import {
   formatIngredientPreview,
   measureSelectValue,
@@ -32,6 +33,8 @@ const emptyIngredient = (): Ingredient => ({
 
 type ImportDraft = Omit<ParsedRecipe, "servings"> & { servings: ServingsValue };
 type ImportMode = "url" | "text" | "image";
+/** One steps editor per section heading; text is the formatted editor slice. */
+type StepGroupDraft = { title: string | null; text: string };
 
 export function ImportPage() {
   const navigate = useNavigate();
@@ -41,7 +44,7 @@ export function ImportPage() {
   const [url, setUrl] = useState("");
   const [pasteText, setPasteText] = useState("");
   const [draft, setDraft] = useState<ImportDraft | null>(null);
-  const [stepsText, setStepsText] = useState("");
+  const [stepGroups, setStepGroups] = useState<StepGroupDraft[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
@@ -56,7 +59,12 @@ export function ImportPage() {
       ? parsed.ingredients
       : [emptyIngredient()];
     setDraft({ ...parsed, ingredients });
-    setStepsText(formatStepsForEditor(parsed.steps));
+    setStepGroups(
+      splitStepsBySection(parsed.steps, parsed.sections).map((group) => ({
+        title: group.title,
+        text: formatStepsForEditor(group.steps),
+      }))
+    );
   }
 
   async function runUrlImport(target: string) {
@@ -209,9 +217,25 @@ export function ImportPage() {
       const ingredients = draft.ingredients.filter(
         (ing) => ing.name.trim() || ing.quantity
       );
-      const steps = parseStepsFromEditor(stepsText);
+      const merged = mergeStepSections(
+        stepGroups.map((group) => ({
+          title: group.title,
+          steps: parseStepsFromEditor(group.text),
+        }))
+      );
       const recipe = await repo.createRecipe(
-        recipeInputFromDraft({ ...draft, servings: draft.servings }, ingredients, steps)
+        recipeInputFromDraft(
+          {
+            ...draft,
+            servings: draft.servings,
+            sections: [
+              ...(draft.sections ?? []).filter((s) => s.kind === "ingredients"),
+              ...merged.sections,
+            ],
+          },
+          ingredients,
+          merged.steps
+        )
       );
       navigate(`/recipes/${recipe.id}`);
     } catch (err) {
@@ -377,7 +401,7 @@ export function ImportPage() {
             <span>Qty</span>
             <span>Unit</span>
             <span>Ingredient</span>
-            <span>Measure as</span>
+            <span>Advanced</span>
             <span />
           </div>
           <ul className="ingredient-list">
@@ -409,13 +433,19 @@ export function ImportPage() {
                     value={ing.name}
                     onChangeName={(name) => updateIngredient(i, { name })}
                   />
-                  <MeasureAsSelect
-                    name={ing.name}
-                    conversionKey={ing.conversionKey}
-                    onChange={(conversionKey) =>
-                      updateIngredient(i, { conversionKey: conversionKey ?? null })
-                    }
-                  />
+                  <details
+                    className="measure-advanced"
+                    open={ing.conversionKey ? true : undefined}
+                  >
+                    <summary className="measure-advanced-toggle">Advanced</summary>
+                    <MeasureAsSelect
+                      name={ing.name}
+                      conversionKey={ing.conversionKey}
+                      onChange={(conversionKey) =>
+                        updateIngredient(i, { conversionKey: conversionKey ?? null })
+                      }
+                    />
+                  </details>
                   <button
                     type="button"
                     className="btn secondary icon-btn"
@@ -446,12 +476,25 @@ export function ImportPage() {
 
           <div className="field">
             <label htmlFor="steps">Steps</label>
-            <StepsTextarea
-              id="steps"
-              rows={12}
-              value={stepsText}
-              onChange={setStepsText}
-            />
+            {stepGroups.map((group, i) => {
+              const id = i === 0 ? "steps" : `steps-${i}`;
+              return (
+                <div key={id} className="step-group">
+                  {group.title && <h3 className="section-label">{group.title}</h3>}
+                  <StepsTextarea
+                    id={id}
+                    rows={stepGroups.length > 1 ? 6 : 12}
+                    value={group.text}
+                    aria-label={group.title ? `${group.title} steps` : "Steps"}
+                    onChange={(text) =>
+                      setStepGroups((prev) =>
+                        prev.map((item, j) => (j === i ? { ...item, text } : item))
+                      )
+                    }
+                  />
+                </div>
+              );
+            })}
           </div>
 
           <div className="field">

@@ -61,20 +61,36 @@ export function instructionsWithSections(value: unknown): {
   return { steps, sections };
 }
 
-function recipeFromJsonLd(obj: Record<string, unknown>, sourceUrl: string): ParsedRecipe | null {
+/** First usable image URL from a string, ImageObject, or any nesting of them. */
+function imageUrlFrom(value: unknown): string | null {
+  if (typeof value === "string") return value.trim() || null;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const url = imageUrlFrom(item);
+      if (url) return url;
+    }
+    return null;
+  }
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    const url = imageUrlFrom(obj.url ?? obj.contentUrl ?? obj["@graph"]);
+    if (url) return url;
+  }
+  return null;
+}
+
+function recipeFromJsonLd(
+  obj: Record<string, unknown>,
+  sourceUrl: string,
+  fallbackImage: string | null
+): ParsedRecipe | null {
   if (!isRecipeType(obj["@type"])) return null;
 
   const ingredientLines = asStringArray(obj.recipeIngredient ?? obj.ingredients);
   const { steps, sections } = instructionsWithSections(
     obj.recipeInstructions ?? obj.instructions
   );
-  const image = obj.image;
-  let photoUrl: string | null = null;
-  if (typeof image === "string") photoUrl = image;
-  else if (Array.isArray(image) && typeof image[0] === "string") photoUrl = image[0];
-  else if (image && typeof image === "object" && "url" in image) {
-    photoUrl = String((image as { url: unknown }).url);
-  }
+  const photoUrl = imageUrlFrom(obj.image) ?? fallbackImage;
 
   const title = String(obj.name ?? obj.headline ?? "Untitled recipe").trim();
 
@@ -93,6 +109,8 @@ function recipeFromJsonLd(obj: Record<string, unknown>, sourceUrl: string): Pars
 
 export function parseJsonLd(html: string, sourceUrl: string): ParsedRecipe | null {
   const $ = cheerio.load(html);
+  // Many sites only publish the hero image as og:image, not in the JSON-LD.
+  const ogImage = $('meta[property="og:image"]').attr("content")?.trim() || null;
   const scripts = $('script[type="application/ld+json"]');
   for (const el of scripts.toArray()) {
     const raw = $(el).html();
@@ -101,7 +119,11 @@ export function parseJsonLd(html: string, sourceUrl: string): ParsedRecipe | nul
       const parsed = JSON.parse(raw.replace(/[\u0000-\u0019]+/g, " "));
       for (const node of unwrapGraph(parsed)) {
         if (node && typeof node === "object") {
-          const recipe = recipeFromJsonLd(node as Record<string, unknown>, sourceUrl);
+          const recipe = recipeFromJsonLd(
+            node as Record<string, unknown>,
+            sourceUrl,
+            ogImage
+          );
           if (recipe && recipe.ingredients.length) return recipe;
         }
       }

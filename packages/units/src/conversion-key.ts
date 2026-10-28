@@ -228,6 +228,11 @@ const NOISE_PHRASES = [
   "for serving",
 ];
 
+/** Compiled once: rebuilding nine RegExps on every keystroke-lookup was jank. */
+const NOISE_PHRASE_PATTERNS = NOISE_PHRASES.map(
+  (phrase) => new RegExp(`\\b${phrase.replace(/\s+/g, "\\s+")}\\b`, "gi")
+);
+
 const NOISE_TOKENS = new Set([
   "fresh",
   "frozen",
@@ -583,8 +588,8 @@ function normalizeForInfer(name: string): string {
     .replace(/\s+/g, " ")
     .trim();
 
-  for (const phrase of NOISE_PHRASES) {
-    n = n.replace(new RegExp(`\\b${phrase.replace(/\s+/g, "\\s+")}\\b`, "gi"), " ");
+  for (const pattern of NOISE_PHRASE_PATTERNS) {
+    n = n.replace(pattern, " ");
   }
 
   const tokens = n.split(/\s+/).filter(Boolean);

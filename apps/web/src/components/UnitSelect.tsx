@@ -2,6 +2,7 @@ import type { ProduceSize } from "@ladlelink/types";
 import {
   MASS_UNITS,
   PORTION_UNITS,
+  pluralUnitLabel,
   VOLUME_UNITS,
   unitLabel,
 } from "@ladlelink/units";
@@ -40,6 +41,18 @@ interface UnitSelectProps {
    * - string: show only that countable (reader, authored countable).
    */
   allowedCountable?: string | null;
+  /**
+   * Reader only: pluralize the unit/countable labels for this amount
+   * ("2 cups", "6 eggs"). Omit on edit/import so the stored unit stays neutral.
+   */
+  quantity?: number;
+}
+
+/** Unit label for an option; pluralized only when the reader passes an amount. */
+function unitOptionLabel(unit: string, quantity?: number): string {
+  const base = unitLabel(unit);
+  if (quantity == null) return base;
+  return pluralUnitLabel(unit, quantity) || base;
 }
 
 export function UnitSelect({
@@ -54,6 +67,7 @@ export function UnitSelect({
   title,
   includeSizes = false,
   allowedCountable,
+  quantity,
 }: UnitSelectProps) {
   const countableUnits =
     allowedCountable === undefined
@@ -70,7 +84,7 @@ export function UnitSelect({
     !(includeSizes && isProduceSize(value)) ? (
       <option value={value}>
         {labelPrefix}
-        {unitLabel(value)}
+        {unitOptionLabel(value, quantity)}
       </option>
     ) : null;
 
@@ -104,7 +118,7 @@ export function UnitSelect({
         {VOLUME_UNITS.map((u) => (
           <option key={u} value={u}>
             {labelPrefix}
-            {unitLabel(u)}
+            {unitOptionLabel(u, quantity)}
           </option>
         ))}
       </optgroup>
@@ -112,7 +126,7 @@ export function UnitSelect({
         {MASS_UNITS.map((u) => (
           <option key={u} value={u}>
             {labelPrefix}
-            {unitLabel(u)}
+            {unitOptionLabel(u, quantity)}
           </option>
         ))}
       </optgroup>
@@ -121,7 +135,7 @@ export function UnitSelect({
           {countableUnits.map((u) => (
             <option key={u} value={u}>
               {labelPrefix}
-              {unitLabel(u)}
+              {unitOptionLabel(u, quantity)}
             </option>
           ))}
         </optgroup>

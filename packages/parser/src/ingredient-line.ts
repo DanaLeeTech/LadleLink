@@ -78,7 +78,8 @@ const BARE_SEASONING_UNITS =
   "pinch|pinches|dash|dashes|drop|drops|smidgen|smidgens|handful|handfuls|twist|twists|dollop|dollops|knob|knobs";
 const BARE_SEASONING_PATTERN = `((?<![a-zA-Z])(?:${BARE_SEASONING_UNITS})(?![a-zA-Z]))`;
 
-const NUMBERED_STEP_PREFIX = /^\s*(?:(?:step\s*)?\d+\s*[.):\-–—]\s*(?!\d)|step\s*\d+\s+)/i;
+const NUMBERED_STEP_PREFIX =
+  /^\s*(?:(?:step\s*)?\d+\s*[.):\-–—]\s*(?!\d)|step\s*\d+)/i;
 
 /** Phrases that mark garnish even when not the leading unit token. */
 const GARNISH_PHRASE =
@@ -260,11 +261,17 @@ function trimEdges(text: string): string {
   return out;
 }
 
-/** Unit token used by the notes extractors, without the capturing group offset. */
+/**
+ * Unit token used by the notes extractors, without the capturing group offset.
+ * Captures: 1 = min, 2 = max, 3 = unit, 4 = imperial duplicate's unit.
+ */
 const EACH_WEIGHT_RE = new RegExp(
-  `\\(?\\s*,?\\s*(?:about|approx\\.?|approximately)?\\s*(\\d+(?:\\.\\d+)?)(?:\\s*(?:-|to)\\s*(\\d+(?:\\.\\d+)?))?\\s*${UNIT_PATTERN}\\.?\\s+each\\)?`,
+  `\\(?\\s*,?\\s*(?:about|approx\\.?|approximately)?\\s*(\\d+(?:\\.\\d+)?)(?:\\s*(?:-|to)\\s*(\\d+(?:\\.\\d+)?))?\\s*${UNIT_PATTERN}\\.?(?:\\s*\\/\\s*\\d+(?:\\.\\d+)?(?:\\s*(?:-|to)\\s*\\d+(?:\\.\\d+)?)?\\s*${UNIT_PATTERN}\\.?)?\\s+(?:each|apiece)\\)?`,
   "i"
 );
+
+/** "(Note 1)" at the end of a line: note text, not part of the ingredient name. */
+const TRAILING_PAREN_NOTE_RE = /\(\s*(?:note|notes|see|optional|photo)\b[^)]*\)\s*$/i;
 
 /** "2 x 400g cans" → countable amount with the pack size as a note. */
 const PACKED_MULTIPLIER_RE = new RegExp(
@@ -283,7 +290,13 @@ const HEAPED_AFTER_RE = new RegExp(
   "i"
 );
 
-type PreparedLine = { text: string; notes: string[] };
+type PreparedLine = {
+  text: string;
+  notes: string[];
+  /** Notes about the leading amount ("minus 2 tbsp") — kept only if it wins. */
+  leadNotes: string[];
+  leading?: { quantity: number; unit: string };
+};
 
 /**
  * Normalize a line before the core parse: measure typography, French units,
@@ -291,16 +304,25 @@ type PreparedLine = { text: string; notes: string[] };
  */
 function prepareIngredientLine(cleaned: string): PreparedLine {
   const notes: string[] = [];
+  const leadNotes: string[] = [];
   let text = cleaned
     // Unicode fraction slash (U+2044), dash-like separators, thin/nbsp spaces
     .replace(/\u2044/g, "/")
     .replace(/[\u2012\u2013\u2014\u2212]/g, "-")
     .replace(/[\u00A0\u2007\u2009\u202F\u2008]/g, " ")
-    // "1,350 g" thousands separator
+    // "1,350 g" thousands separator, then "0,5 l" decimal comma
     .replace(/(\d),(?=\d{3}(?:\D|$))/g, "$1")
+    .replace(/(\d),(\d{1,2})(?!\d)/g, "$1.$2")
     // Plus/minus amounts read as a range
     .replace(/\s*(?:±|\+\s*\/\s*-)\s*/g, "-");
   text = trimEdges(text);
+
+  // "about 2 cups stock" — the hedge is a note, not part of the amount
+  const hedge = text.match(/^(about|approx\.?|approximately|around|~)\s+(?=\d)/i);
+  if (hedge) {
+    notes.push(hedge[1]!.toLowerCase().replace(/\.$/, ""));
+    text = text.slice(hedge[0].length);
+  }
 
   for (const [char, value] of Object.entries(UNICODE_FRACTIONS)) {
     text = text.replace(
@@ -314,6 +336,7 @@ function prepareIngredientLine(cleaned: string): PreparedLine {
     String(Number(whole) + Number(num) / Number(den));
   text = text
     .replace(/(\d+)\s*-\s*(\d+)\/(\d+)/g, toDecimal)
+    .replace(/(\d+)\s+and\s+(\d+)\/(\d+)/g, toDecimal)
     .replace(/(\d+)\s+(\d+)\/(\d+)/g, toDecimal);
 
   // "500 gm" / "500 gms"
@@ -327,12 +350,35 @@ function prepareIngredientLine(cleaned: string): PreparedLine {
     `${Number(n.replace(",", ".")) * 10} ml`
   );
 
+  // A per-piece weight only counts after the name ("150-180g each"), never the
+  // leading amount ("1/2 tsp each salt and pepper").
   const each = text.match(EACH_WEIGHT_RE);
-  if (each) {
+  const eachAfterName =
+    each != null && /[a-zA-Z][^a-zA-Z0-9]{0,2}$/.test(text.slice(0, each.index));
+  if (each && eachAfterName) {
     const unit = unitLabel(canonicalizeUnit(each[3] ?? ""));
     const amount = each[2] ? `${each[1]}-${each[2]}` : `${each[1]}`;
     notes.push(`${amount} ${unit} each`.replace(/\s+/g, " ").trim());
     text = text.replace(each[0], " ");
+  }
+  text = trimEdges(text);
+
+  // "(Note 1)" at the end of the line is a note, not the ingredient name.
+  const trailingNote = text.match(TRAILING_PAREN_NOTE_RE);
+  if (trailingNote) {
+    notes.push(cleanNotes(trailingNote[0].replace(/^\(\s*|\s*\)$/g, "")));
+    text = text.slice(0, trailingNote.index).trim();
+  }
+
+  // "1/2 tsp each salt and pepper" — a bare "each" is a note on the measure
+  const leading = findMeasures(text)[0];
+  if (leading && leading.index === 0) {
+    const after = text.slice(leading.length);
+    const plainEach = after.match(/^\s*each\b/i);
+    if (plainEach) {
+      notes.push("each");
+      text = `${text.slice(0, leading.length)}${after.slice(plainEach[0].length)}`;
+    }
   }
 
   const packed = text.match(PACKED_MULTIPLIER_RE);
@@ -354,26 +400,45 @@ function prepareIngredientLine(cleaned: string): PreparedLine {
     text = text.replace(HEAPED_AFTER_RE, `${heapedAfter[1]} ${heapedAfter[2]} `);
   }
 
-  // "2 cups plus 2 tbsp flour" — keep the second amount as a note
-  const plus = text.match(/\s+(?:plus|\+)\s+(.+)$/i);
-  if (plus) {
-    const extra = findMeasures(plus[1]!)[0];
+  // "2 cups plus 2 tbsp flour" / "2 cups minus 2 tbsp" — second amount is a note
+  const extraAmount = text.match(/\s+(plus|\+|minus)\s+(.+)$/i);
+  if (extraAmount) {
+    const extra = findMeasures(extraAmount[2]!)[0];
     if (extra) {
-      const raw = plus[1]!.slice(extra.index, extra.index + extra.length).trim();
-      notes.push(`plus ${raw}`);
-      const tail = plus[1]!.slice(extra.index + extra.length);
-      text = `${text.slice(0, plus.index)} ${tail}`;
+      const raw = extraAmount[2]!.slice(extra.index, extra.index + extra.length).trim();
+      const word = extraAmount[1]!.toLowerCase() === "minus" ? "minus" : "plus";
+      leadNotes.push(`${word} ${raw}`);
+      const tail = extraAmount[2]!.slice(extra.index + extra.length);
+      text = `${text.slice(0, extraAmount.index)} ${tail}`;
     }
   }
 
-  return { text: trimEdges(text.replace(/\s+/g, " ")), notes };
+  const finalText = trimEdges(text.replace(/\s+/g, " "));
+  const leadingMeasure = findMeasures(finalText)[0];
+  return {
+    text: finalText,
+    notes,
+    leadNotes,
+    leading: leadingMeasure
+      ? { quantity: leadingMeasure.quantity, unit: leadingMeasure.unit }
+      : undefined,
+  };
 }
 
 function cleanNotes(note: string): string {
-  return note
-    .replace(/^[\s,;:()\[\]\-–—]+|[\s,;:()\[\]\-–—]+$/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  let out = note;
+  let prev = "";
+  while (prev !== out) {
+    prev = out;
+    out = out
+      .replace(/\(\s*\)/g, " ")
+      .replace(/\(\s*[,;:]+/g, "(")
+      .replace(/[,;:]+\s*\)/g, ")")
+      .replace(/\(\(+/g, "(")
+      .replace(/\)\)+/g, ")")
+      .replace(/^[\s,;:()\[\]\-–—]+|[\s,;:()\[\]\-–—]+$/g, "");
+  }
+  return out.replace(/\s+/g, " ").trim();
 }
 
 export function parseIngredientLine(line: string): Ingredient {
@@ -382,15 +447,25 @@ export function parseIngredientLine(line: string): Ingredient {
     return { quantity: 0, unit: "", name: "" };
   }
 
-  const { text, notes } = prepareIngredientLine(cleaned);
-  if (!text.trim()) {
+  const prep = prepareIngredientLine(cleaned);
+  if (!prep.text.trim()) {
     const empty: Ingredient = { quantity: 0, unit: "", name: "" };
-    const note = cleanNotes(notes.join(", "));
+    const note = cleanNotes([...prep.notes, ...prep.leadNotes].join(", "));
     return note ? { ...empty, notes: note } : empty;
   }
 
-  const ing = parseIngredientCore(text);
-  const allNotes = cleanNotes([...notes, ing.notes].filter(Boolean).join(", "));
+  const ing = parseIngredientCore(prep.text);
+  // "minus 2 tbsp" only describes the leading amount: drop it when a bracketed
+  // weight ("(8 ½ ounces)") wins the dual-measure rule instead.
+  const leadingWon =
+    prep.leading != null &&
+    prep.leading.unit === ing.unit &&
+    Math.abs(prep.leading.quantity - ing.quantity) < 1e-9;
+  const allNotes = cleanNotes(
+    [...prep.notes, ...(leadingWon ? prep.leadNotes : []), ing.notes]
+      .filter(Boolean)
+      .join(", ")
+  );
   return allNotes ? { ...ing, notes: allNotes } : ing;
 }
 
@@ -648,12 +723,41 @@ function finalize(ing: {
 }
 
 /**
+ * French ingredient words → English, for conversion-key inference only.
+ * The displayed name stays exactly as written.
+ */
+const FRENCH_INFER_WORDS: Record<string, string> = {
+  farine: "flour",
+  sucre: "sugar",
+  lait: "milk",
+  beurre: "butter",
+  oeuf: "egg",
+  oeufs: "eggs",
+  // "œ" (U+0153) has no NFD decomposition, so the ligature needs its own keys
+  "œuf": "egg",
+  "œufs": "eggs",
+  pomme: "apple",
+  pommes: "apples",
+};
+
+function frenchInferName(name: string): string {
+  return name.replace(/[\p{L}'’-]+/gu, (word) => {
+    const key = word
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    return FRENCH_INFER_WORDS[key] ?? word;
+  });
+}
+
+/**
  * Pre-fill Measure as… whenever we can infer a catalog base — including exact
  * matches like "water" / "flour" so the select shows the pick for confirmation.
  */
 function withSuggestedKey(ing: Ingredient): Ingredient {
   if (!ing.name.trim()) return ing;
-  const suggested = inferConversionKey(ing.name);
+  const suggested =
+    inferConversionKey(ing.name) || inferConversionKey(frenchInferName(ing.name));
   if (!suggested) return ing;
   return { ...ing, conversionKey: suggested };
 }
@@ -666,11 +770,24 @@ function withDefaultProduceSize(ing: Ingredient): Ingredient {
 }
 
 function cleanName(name: string): string {
-  return name
-    .replace(/^of\s+/i, "")
-    .replace(/^[\s,;:\-–—]+|[\s,;:\-–—]+$/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  let out = name;
+  let prev = "";
+  while (prev !== out) {
+    prev = out;
+    // Leading French article ("150g de farine", "2 c. à soupe d'huile")
+    out = trimEdges(
+      out
+        .replace(/^of\s+/i, "")
+        .replace(/^(?:de|du|des)\s+/i, "")
+        .replace(/^d['’]\s*/i, "")
+        .replace(/\(\s*\)/g, " ")
+        .replace(/\(\s*[,;:]+/g, "(")
+        .replace(/[,;:]+\s*\)/g, ")")
+        .replace(/\(\(+/g, "(")
+        .replace(/\)\)+/g, ")")
+    );
+  }
+  return out.replace(/\s+/g, " ").trim();
 }
 
 /** Prefer spaced produce labels (sweet potato) over underscored canonical units. */
@@ -694,6 +811,31 @@ export function cleanRecipeText(text: string): string {
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** Drop Markdown emphasis markers: "**Scones**" → "Scones". */
+export function stripMarkdownEmphasis(text: string): string {
+  return text
+    .replace(/\*\*\*(.+?)\*\*\*/g, "$1")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/___(.+?)___/g, "$1")
+    .replace(/__(.+?)__/g, "$1")
+    .replace(/(^|\s)_(.+?)_(?=\s|$)/g, "$1$2")
+    // A lone marker left at an edge (a bullet-stripped "**Scones**")
+    .replace(/^[*_]+|[*_]+$/g, "");
+}
+
+/**
+ * Shared title cleanup for scraped and pasted recipes: Markdown emphasis and a
+ * trailing " | Site name", keeping any earlier segments ("A | B | Site" → "A | B").
+ */
+export function cleanRecipeTitle(title: string): string {
+  const plain = stripMarkdownEmphasis(title);
+  const parts = plain.split("|");
+  if (parts.length < 2) return plain.trim();
+  parts.pop();
+  return parts.join("|").trim() || plain.trim();
 }
 
 export function asStringArray(value: unknown): string[] {

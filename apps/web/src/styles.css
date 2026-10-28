@@ -304,6 +304,31 @@ textarea {
   max-width: 40rem;
 }
 
+.tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  padding: 0.2rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.step-group {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
 .recipe-photo {
   display: block;
   width: 100%;
@@ -464,6 +489,9 @@ textarea {
 .servings-row input[type="range"] {
   flex: 1;
   min-width: 160px;
+  /* Thumb/slider needs a 44 px touch box without looking heavy */
+  height: 44px;
+  margin: 0;
   accent-color: var(--accent);
 }
 

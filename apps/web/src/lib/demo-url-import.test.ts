@@ -51,10 +51,17 @@ describe("importRecipeInBrowser", () => {
     assert.equal(recipe.ingredients.length, 3);
   });
 
-  it("skips a reader that answers with a page that has no recipe", async () => {
-    const fetchImpl = fakeFetch((url) => (url.includes("allorigins") ? RECIPE_HTML : JUNK_HTML));
-    const recipe = await importRecipeInBrowser("https://example.com/pancakes", fetchImpl);
-    assert.equal(recipe.title, "Test Pancakes");
+  it("does not retry other readers when the page itself has no recipe", async () => {
+    const calls: string[] = [];
+    const fetchImpl = fakeFetch(() => JUNK_HTML, calls);
+    await assert.rejects(
+      () => importRecipeInBrowser("https://example.com/pancakes", fetchImpl),
+      /No recipe found/
+    );
+    // First reader, then one rendered-markdown attempt — no proxy repeats.
+    assert.equal(calls.length, 2);
+    assert.match(calls[0]!, /r\.jina\.ai/);
+    assert.match(calls[1]!, /r\.jina\.ai/);
   });
 
   it("asks every reader before giving up", async () => {

@@ -9,7 +9,7 @@
     "build:demo": "tsc -p tsconfig.json && FF_DEMO_BUILD=1 vite build",
     "build:capacitor": "tsc -p tsconfig.json && FF_CAPACITOR_BUILD=1 vite build",
     "preview": "vite preview",
-    "test": "tsx --test src/lib/recipe-card-payload.test.ts src/lib/demo-url-import.test.ts src/lib/recipe-card-import.test.ts src/lib/import-draft.test.ts src/lib/import-breakit.test.ts src/lib/ingredient-ui.test.ts src/lib/recipe-form.test.ts src/components/measure-as-select.test.ts src/components/measure-as-select-debounce.test.ts src/components/recipe-error-boundary.test.ts src/data/recipe-validation.test.ts src/data/import-breakit.test.ts src/data/repository.test.ts src/data/api-repository.test.ts",
+    "test": "tsx --test src/lib/recipe-card-payload.test.ts src/lib/demo-url-import.test.ts src/lib/recipe-card-import.test.ts src/lib/import-draft.test.ts src/lib/import-breakit.test.ts src/lib/ingredient-ui.test.ts src/lib/recipe-form.test.ts src/lib/steps-sections.test.ts src/components/measure-as-select.test.ts src/components/measure-as-select-debounce.test.ts src/components/unit-select.test.ts src/components/recipe-error-boundary.test.ts src/data/recipe-validation.test.ts src/data/import-breakit.test.ts src/data/repository.test.ts src/data/api-repository.test.ts",
     "clean": "rm -rf dist"
   },
   "dependencies": {

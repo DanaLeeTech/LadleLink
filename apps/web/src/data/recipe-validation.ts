@@ -74,27 +74,39 @@ export function validateImportRecipes(values: unknown[]): { recipes: Recipe[]; r
   return { recipes, reasons };
 }
 
+/** "1 recipe" / "8 recipes" — count plus a singular or plural noun. */
+function countLabel(count: number, singular: string, plural: string): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 /**
  * Result line for a backup import. An all-skipped file is a failure, not a
- * success with a zero in it.
+ * success with a zero in it. Per-entry reasons are returned separately so the
+ * page can list them behind a details toggle.
  */
 export function importSummary(result: {
   imported: number;
   skipped?: number;
   reasons?: string[];
-}): { ok: boolean; message: string } {
-  const details = result.reasons?.length ? ` ${result.reasons.join(" ")}` : "";
+}): { ok: boolean; message: string; reasons: string[] } {
+  const reasons = result.reasons ?? [];
+  const skipped = result.skipped ?? 0;
+  const importedText = `Imported ${countLabel(result.imported, "recipe", "recipes")}.`;
+  const skippedText = skipped
+    ? `Skipped ${countLabel(skipped, "damaged entry", "damaged entries")}.`
+    : "";
+
   if (!result.imported) {
     return {
       ok: false,
-      message: `No recipes were imported — nothing was saved. Skipped ${result.skipped ?? 0} damaged recipe(s).${details}`,
+      message: `No recipes were imported — nothing was saved.${skippedText ? ` ${skippedText}` : ""}`,
+      reasons,
     };
   }
   return {
     ok: true,
-    message:
-      `Imported ${result.imported} recipes.` +
-      (result.skipped ? ` Skipped ${result.skipped} damaged recipe(s):${details}` : ""),
+    message: skippedText ? `${importedText} ${skippedText}` : importedText,
+    reasons,
   };
 }
 

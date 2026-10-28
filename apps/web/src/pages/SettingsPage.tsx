@@ -25,6 +25,7 @@ export function SettingsPage() {
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [importReasons, setImportReasons] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -75,11 +76,13 @@ export function SettingsPage() {
   async function onImportFile(file: File) {
     setError(null);
     setMessage(null);
+    setImportReasons([]);
     try {
       const text = await file.text();
       const payload = parseBackupPayload(text);
       const result = await repo.importAll(payload);
       const summary = importSummary(result);
+      setImportReasons(summary.reasons);
       if (summary.ok) setMessage(summary.message);
       else setError(summary.message);
     } catch (err) {
@@ -450,6 +453,20 @@ export function SettingsPage() {
 
       {message && <p className="success">{message}</p>}
       {error && <p className="error">{error}</p>}
+      {importReasons.length > 0 && (
+        <details className="import-reasons">
+          <summary>
+            {importReasons.length === 1
+              ? "Why 1 entry was skipped"
+              : `Why ${importReasons.length} entries were skipped`}
+          </summary>
+          <ul>
+            {importReasons.map((reason) => (
+              <li key={reason}>{reason}</li>
+            ))}
+          </ul>
+        </details>
+      )}
     </main>
   );
 }

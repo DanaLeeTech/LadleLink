@@ -106,17 +106,24 @@ export async function importRecipeInBrowser(
   onProgress?.("Fetching…");
   for (const source of candidates) {
     if (signal?.aborted) throw new Error("Import cancelled");
+    let html: string;
     try {
-      const html = await fetchHtml(source, fetchImpl, signal);
-      onProgress?.("Reading recipe…");
-      // The parser only returns a recipe with ingredients; a 404, article or
-      // menu page throws and the next source is tried.
+      html = await fetchHtml(source, fetchImpl, signal);
+    } catch {
+      if (signal?.aborted) throw new Error("Import cancelled");
+      // Blocked or timed out — another reader may still get through.
+      continue;
+    }
+
+    onProgress?.("Reading recipe…");
+    try {
       const parsed = parseRecipeHtml(html, target);
       if (parsed.title.trim()) return parsed;
     } catch {
-      if (signal?.aborted) throw new Error("Import cancelled");
-      // Source blocked us, timed out, or found no recipe — try the next one.
+      // The page came back but is not a recipe. Every reader returns the same
+      // page, so retrying them only wastes the visitor's time.
     }
+    break;
   }
 
   // JS-rendered and Cloudflare-protected pages have no recipe in their raw HTML.

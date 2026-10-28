@@ -134,8 +134,24 @@ describe("importSummary", () => {
   it("reports a normal import with skipped rows as success", () => {
     const summary = importSummary({ imported: 2, skipped: 1, reasons: ["Skipped #2: bad"] });
     assert.equal(summary.ok, true);
-    assert.match(summary.message, /^Imported 2 recipes\./);
-    assert.match(summary.message, /Skipped #2: bad/);
+    assert.equal(summary.message, "Imported 2 recipes. Skipped 1 damaged entry.");
+    // Reasons are listed separately, behind the page's details toggle
+    assert.deepEqual(summary.reasons, ["Skipped #2: bad"]);
+  });
+
+  it("uses singular nouns for one recipe and one damaged entry", () => {
+    assert.equal(importSummary({ imported: 1 }).message, "Imported 1 recipe.");
+    assert.equal(
+      importSummary({ imported: 1, skipped: 1, reasons: ["Skipped #2: bad"] }).message,
+      "Imported 1 recipe. Skipped 1 damaged entry."
+    );
+  });
+
+  it("uses plural nouns for several damaged entries", () => {
+    const reasons = Array.from({ length: 8 }, (_, i) => `Skipped #${i + 1}: bad`);
+    const summary = importSummary({ imported: 3, skipped: 8, reasons });
+    assert.equal(summary.message, "Imported 3 recipes. Skipped 8 damaged entries.");
+    assert.equal(summary.reasons.length, 8);
   });
 
   it("reports an all-skipped file as a failure that saved nothing", () => {
@@ -147,7 +163,9 @@ describe("importSummary", () => {
     assert.equal(summary.ok, false);
     assert.match(summary.message, /No recipes were imported/);
     assert.match(summary.message, /nothing was saved/);
+    assert.match(summary.message, /Skipped 3 damaged entries\./);
     // Per-recipe reasons survive for the user
-    assert.match(summary.message, /Skipped #3: bad/);
+    assert.equal(summary.reasons.length, 3);
+    assert.match(summary.reasons[2]!, /Skipped #3: bad/);
   });
 });
