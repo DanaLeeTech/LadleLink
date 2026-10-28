@@ -8,6 +8,7 @@ import type {
 import type {
   DataSourceMode,
   DockerConfig,
+  ImportResult,
   RecipeConflict,
   RecipeRepository,
   SafFolderInfo,
@@ -59,10 +60,11 @@ export function createApiRepository(): RecipeRepository {
     updateRecipe: (id: string, input: RecipeInput) =>
       api<Recipe>(`/api/recipes/${id}`, { method: "PUT", body: JSON.stringify(input) }),
     deleteRecipe: (id: string) => api<void>(`/api/recipes/${id}`, { method: "DELETE" }),
-    importFromUrl: (url: string) =>
+    importFromUrl: (url: string, options?: { signal?: AbortSignal }) =>
       api<ParsedRecipe>("/api/recipes/import", {
         method: "POST",
         body: JSON.stringify({ url }),
+        signal: options?.signal,
       }),
     getMeasurementPrefs: () => api<MeasurementPrefs>("/api/settings/measurement"),
     setMeasurementPrefs: (prefs: MeasurementPrefs) =>
@@ -72,7 +74,7 @@ export function createApiRepository(): RecipeRepository {
       }),
     exportAll: () => api<ExportPayload>("/api/export"),
     importAll: (payload: ExportPayload) =>
-      api<{ imported: number }>("/api/import", {
+      api<ImportResult>("/api/import", {
         method: "POST",
         body: JSON.stringify(payload),
       }),

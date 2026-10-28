@@ -1,7 +1,9 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Link, Navigate, Route, Routes } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { DemoBanner } from "./components/DemoBanner";
+import { RecipeErrorBoundary } from "./components/RecipeErrorBoundary";
 import { ShareListener } from "./components/ShareListener";
+import { useRepository } from "./data/RepositoryProvider";
 import { ListPage } from "./pages/ListPage";
 import { ReaderPage } from "./pages/ReaderPage";
 import { EditPage } from "./pages/EditPage";
@@ -15,6 +17,24 @@ import {
   toggleTheme,
   type Theme,
 } from "./lib/theme";
+
+/** Recipe reader with a boundary so one damaged recipe cannot blank the page. */
+function ReaderRoute() {
+  const { id } = useParams();
+  const repo = useRepository();
+  const navigate = useNavigate();
+  return (
+    <RecipeErrorBoundary
+      key={id}
+      onDelete={async () => {
+        if (id) await repo.deleteRecipe(id);
+        navigate("/");
+      }}
+    >
+      <ReaderPage />
+    </RecipeErrorBoundary>
+  );
+}
 
 function ThemeToggle({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
   const nextLabel = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
@@ -131,7 +151,7 @@ export function App() {
       </header>
       <Routes>
         <Route path="/" element={<ListPage />} />
-        <Route path="/recipes/:id" element={<ReaderPage />} />
+        <Route path="/recipes/:id" element={<ReaderRoute />} />
         <Route path="/recipes/:id/edit" element={<EditPage />} />
         <Route path="/new" element={<EditPage />} />
         <Route path="/import" element={<ImportPage />} />

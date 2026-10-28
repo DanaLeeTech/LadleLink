@@ -37,13 +37,13 @@
   --muted: #b5a8ab;
   --paper: #3a3336;
   --paper-edge: #3d2e33;
-  --accent: #c47890;
+  --accent: #e6aabf;
   --accent-dark: #e0a0b4;
   --accent-soft: #f3e8e9;
-  --accent-green: #7a9a80;
+  --accent-green: #95bd9b;
   --line: #3d2e33;
   --ok: #6fae8a;
-  --danger: #e07070;
+  --danger: #f29595;
   --topbar-fg: #fff9f5;
   --shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
   --wash-1: rgba(243, 232, 233, 0.55);
@@ -304,6 +304,21 @@ textarea {
   max-width: 40rem;
 }
 
+.recipe-photo {
+  display: block;
+  width: 100%;
+  height: clamp(180px, 32vw, 280px);
+  object-fit: cover;
+  margin-bottom: 1.25rem;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+}
+
+.recipe-photo--placeholder {
+  background: linear-gradient(135deg, var(--accent-soft), var(--paper-edge));
+  border: 1px dashed var(--line);
+}
+
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -378,7 +393,8 @@ textarea {
 
 .btn.icon-btn {
   padding: 0.35rem 0.65rem;
-  min-width: 2.25rem;
+  min-width: 44px;
+  min-height: 44px;
   line-height: 1;
   font-size: 1.35rem;
   font-weight: 400;
@@ -451,6 +467,32 @@ textarea {
   accent-color: var(--accent);
 }
 
+.servings-number {
+  width: 5.5rem;
+  min-height: 44px;
+  padding: 0.35rem 0.5rem;
+  font-size: 1.25rem;
+  text-align: center;
+}
+
+.scale-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.scale-btn {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.4rem 0.65rem;
+}
+
+.scale-btn.is-active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--paper);
+}
+
 .ingredient-list,
 .step-list {
   margin: 0;
@@ -494,9 +536,48 @@ textarea {
   }
 }
 
+.qty-field {
+  position: relative;
+  display: grid;
+  gap: 0.25rem;
+  justify-items: start;
+}
+
 .qty-input {
   width: 5.5rem;
   min-width: 4.5rem;
+}
+
+.qty-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.qty-chip {
+  padding: 0.05rem 0.3rem;
+  min-width: 24px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--accent-green);
+  cursor: pointer;
+}
+
+.qty-error {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 5;
+  width: 10rem;
+  padding: 0.15rem 0.35rem;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  font-size: 0.78rem;
+  color: var(--danger);
 }
 
 .unit-select {
@@ -519,6 +600,49 @@ textarea {
   font-size: 0.88rem;
   color: var(--muted);
   font-style: italic;
+}
+
+/* Per-row "Advanced" disclosure around the Measure as select. */
+.measure-advanced {
+  flex: 0 1 9rem;
+  min-width: 7.5rem;
+}
+
+.measure-advanced > summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-green);
+  min-height: 2.25rem;
+  padding: 0.5rem 0;
+}
+
+.measure-advanced .ingredient-name-pick {
+  width: 100%;
+}
+
+/* Touch targets: ingredient rows are the densest control area on a phone. */
+@media (max-width: 719px) {
+  .ingredient-review-row input,
+  .ingredient-review-row select,
+  .ingredient-review-row .btn,
+  .ingredient-review-row summary,
+  .qty-chip {
+    min-height: 44px;
+  }
+
+  .measure-advanced {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .ingredient-review-row .ingredient-name-input {
+    flex: 1 1 100%;
+  }
+
+  .ingredient-review-row .btn {
+    min-width: 44px;
+  }
 }
 
 .size-label {
@@ -589,6 +713,7 @@ textarea {
     display: inline-block;
     vertical-align: baseline;
     margin-right: 0.35em;
+    min-height: 44px;
   }
 
   .ingredient-main--reader > .unit-label::after,
@@ -605,6 +730,103 @@ textarea {
 .hint {
   font-size: 0.85rem;
   color: var(--accent);
+}
+
+/* —— Cooking mode —— */
+
+.cooking-step {
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  line-height: 1.45;
+  margin: 0.5rem 0 1.5rem;
+}
+
+.cooking-ingredients {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cooking-ing {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 44px;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.cooking-ing input {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+
+.cooking-ing.is-done span {
+  color: var(--ink-soft);
+  text-decoration: line-through;
+}
+
+/* —— Undo toast —— */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.25rem;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: calc(100% - 2rem);
+  padding: 0.6rem 0.6rem 0.6rem 1rem;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: var(--shadow);
+}
+
+.toast .btn {
+  min-height: 44px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* —— Mobile ⋯ menu for destructive actions —— */
+
+.more-menu {
+  position: relative;
+  display: none;
+}
+
+.more-menu-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.35rem);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 9rem;
+  padding: 0.35rem;
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.more-menu-list .btn {
+  min-height: 44px;
+}
+
+@media (max-width: 719px) {
+  .reader-delete {
+    display: none;
+  }
+
+  .more-menu {
+    display: inline-block;
+  }
 }
 
 .step-list li {
@@ -647,6 +869,12 @@ textarea {
 .error {
   color: var(--danger);
   margin: 0.75rem 0;
+}
+
+.field-error {
+  color: var(--danger);
+  font-size: 0.85rem;
+  margin: 0;
 }
 
 .success {

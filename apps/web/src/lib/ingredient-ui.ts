@@ -1,5 +1,6 @@
 import type { Ingredient, ProduceSize } from "@ladlelink/types";
 import {
+  formatQuantity,
   formatQuantityRange,
   pluralUnitLabel,
   pluralProduceName,
@@ -7,6 +8,7 @@ import {
   unitLabel,
 } from "@ladlelink/units";
 import { isProduceSize } from "../components/UnitSelect";
+import { UNICODE_FRACTION_VALUES } from "./unicode-fractions";
 
 export { unitLabel };
 
@@ -37,17 +39,17 @@ export function patchFromMeasureSelect(value: string): {
   return { unit: value, size: undefined };
 }
 
-/** Display value for the single quantity field: `4` or `4-8`; blank when quantity is 0. */
+/** Display value for the single quantity field: `4`, `4-8` or `1 ½`; blank when quantity is 0. */
 export function formatQuantityField(ing: Pick<Ingredient, "quantity" | "quantityMax">): string {
   if (
     ing.quantityMax != null &&
     Number.isFinite(ing.quantityMax) &&
     ing.quantityMax !== ing.quantity
   ) {
-    return `${formatNum(ing.quantity)}-${formatNum(ing.quantityMax)}`;
+    return `${formatFieldNum(ing.quantity)}-${formatFieldNum(ing.quantityMax)}`;
   }
   if (!Number.isFinite(ing.quantity) || ing.quantity === 0) return "";
-  return formatNum(ing.quantity);
+  return formatFieldNum(ing.quantity);
 }
 
 /** Committed ingredient qty must be finite and greater than zero. */
@@ -55,28 +57,51 @@ export function isValidIngredientQuantity(n: number): boolean {
   return Number.isFinite(n) && n > 0;
 }
 
+/**
+ * One quantity, as people type it: `2`, `0.5` / `0,5`, `1/2`, `1 1/2`, `½`, `1½`.
+ * Null when it is not a usable number.
+ */
+function parseSingleQuantity(raw: string): number | null {
+  const text = raw.trim();
+  if (!text) return null;
+
+  const unicode = text.match(/^(?:(\d+)\s*)?([½¼¾⅓⅔⅜⅝⅞⅛])$/);
+  if (unicode) {
+    return (unicode[1] ? Number(unicode[1]) : 0) + UNICODE_FRACTION_VALUES[unicode[2]!]!;
+  }
+
+  const fraction = text.match(/^(\d+)?\s*(\d+)\s*\/\s*(\d+)$/);
+  if (fraction) {
+    const denominator = Number(fraction[3]);
+    if (!denominator) return null;
+    return (fraction[1] ? Number(fraction[1]) : 0) + Number(fraction[2]) / denominator;
+  }
+
+  // A comma is a decimal in `0,5` but a thousands separator in `1,000`.
+  const commaDecimal = /^\d+,\d{1,2}$/.test(text);
+  const cleaned = commaDecimal ? text.replace(",", ".") : text.replace(/,/g, "");
+  return /^\d+(\.\d+)?$/.test(cleaned) ? Number(cleaned) : null;
+}
+
 /** `quantityMax: null` means clear any existing range upper bound. */
 export function parseQuantityField(raw: string): {
   quantity: number;
   quantityMax: number | null;
 } {
-  const text = raw.trim().replace(/,/g, "");
+  const text = raw.trim();
   if (!text) return { quantity: 0, quantityMax: null };
 
-  const range = text.match(
-    /^(\d+(?:\.\d+)?)\s*(?:to|-|–|—)\s*(\d+(?:\.\d+)?)$/i
-  );
+  const range = text.match(/^(.+?)\s*(?:to|-|–|—)\s*(.+)$/i);
   if (range) {
-    const a = Number(range[1]);
-    const b = Number(range[2]);
-    return {
-      quantity: Math.min(a, b),
-      quantityMax: Math.max(a, b),
-    };
+    const a = parseSingleQuantity(range[1]!);
+    const b = parseSingleQuantity(range[2]!);
+    if (a != null && b != null) {
+      return { quantity: Math.min(a, b), quantityMax: Math.max(a, b) };
+    }
   }
 
-  const n = Number(text);
-  return { quantity: Number.isFinite(n) ? n : 0, quantityMax: null };
+  const n = parseSingleQuantity(text);
+  return { quantity: n ?? 0, quantityMax: null };
 }
 
 /**
@@ -99,10 +124,10 @@ export function parseQuantityFieldForCommit(raw: string): {
   return parsed;
 }
 
-function formatNum(n: number): string {
+function formatFieldNum(n: number): string {
   if (!Number.isFinite(n)) return "0";
-  if (Number.isInteger(n)) return String(n);
-  return String(Math.round(n * 1000) / 1000);
+  // `piece` is the countable fallback: whole numbers, friendly fractions, else 2 dp.
+  return formatQuantity(n, "piece");
 }
 
 /** Quantity for the line preview — fractions for spoon/cup measures. */

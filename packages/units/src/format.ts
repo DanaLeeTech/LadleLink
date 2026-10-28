@@ -1,16 +1,18 @@
 const FRACTIONS: Array<{ value: number; label: string }> = [
-  { value: 0.125, label: "1/8" },
-  { value: 0.25, label: "1/4" },
-  { value: 1 / 3, label: "1/3" },
-  { value: 0.375, label: "3/8" },
-  { value: 0.5, label: "1/2" },
-  { value: 0.625, label: "5/8" },
-  { value: 2 / 3, label: "2/3" },
-  { value: 0.75, label: "3/4" },
-  { value: 0.875, label: "7/8" },
+  { value: 0.125, label: "⅛" },
+  { value: 0.25, label: "¼" },
+  { value: 1 / 3, label: "⅓" },
+  { value: 0.375, label: "⅜" },
+  { value: 0.5, label: "½" },
+  { value: 0.625, label: "⅝" },
+  { value: 2 / 3, label: "⅔" },
+  { value: 0.75, label: "¾" },
+  { value: 0.875, label: "⅞" },
 ];
 
 const FRACTION_UNITS = new Set(["cup", "tsp", "tbsp", "dessertspoon"]);
+/** Metric mass/volume reads as a decimal ("1.5 g"), never "1 ½ g". */
+const DECIMAL_UNITS = new Set(["g", "kg", "mg", "ml", "l", "cl"]);
 
 function nearestFraction(frac: number): { value: number; label: string } {
   let best = FRACTIONS[0];
@@ -64,6 +66,13 @@ export function formatQuantity(quantity: number, unit: string): string {
     const best = nearestFraction(frac);
     if (whole === 0) return best.label;
     return `${whole} ${best.label}`;
+  }
+  // Countable things (eggs, slices) read better as ½ than 0.5; leave 0.7 alone.
+  const whole = Math.floor(rounded + 1e-9);
+  const frac = rounded - whole;
+  const best = nearestFraction(frac);
+  if (!DECIMAL_UNITS.has(u) && frac > 1e-6 && Math.abs(frac - best.value) < 0.02) {
+    return whole === 0 ? best.label : `${whole} ${best.label}`;
   }
   const s = String(rounded);
   if (s.includes("e") || s.includes("E")) return rounded.toFixed(2);

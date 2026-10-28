@@ -5,6 +5,7 @@ import {
   canonicalizeUnit,
   convertIngredient,
   conversionCatalogLabels,
+  conversionMatchIndexBuildCount,
   defaultProduceSize,
   formatQuantity,
   formatQuantityRange,
@@ -14,18 +15,29 @@ import {
   isProduceIngredient,
   isSingleIngredientLabel,
   lookupDensity,
+  matchingConversionLabels,
   mlPerCup,
   pluralProduceName,
   pluralUnitLabel,
   resolveConversionName,
   resolveDensity,
   resolvePieceGrams,
+  singularizeName,
   unitFamily,
+  usesAustralianMeasures,
   volumeUnitToMl,
 } from "./index.js";
 
-const metric: MeasurementPrefs = { ...DEFAULT_MEASUREMENT_PREFS, cupStandard: "metric" };
-const us: MeasurementPrefs = { ...DEFAULT_MEASUREMENT_PREFS, cupStandard: "us" };
+const metric: MeasurementPrefs = {
+  ...DEFAULT_MEASUREMENT_PREFS,
+  cupStandard: "metric",
+  australianMeasures: true,
+};
+const us: MeasurementPrefs = {
+  ...DEFAULT_MEASUREMENT_PREFS,
+  cupStandard: "us",
+  australianMeasures: false,
+};
 
 describe("cup locale", () => {
   it("uses 250 ml for metric cups and 240 ml for US", () => {
@@ -41,6 +53,56 @@ describe("cup locale", () => {
     const usMl = convertIngredient(flour, "ml", us);
     expect(metricMl.quantity).toBe(250);
     expect(usMl.quantity).toBe(240);
+  });
+});
+
+describe("Australian measures", () => {
+  it("uses 20 ml tbsp and 5 ml tsp; US uses 14.8 and 4.9", () => {
+    const oil: Ingredient = { quantity: 2, unit: "tbsp", name: "olive oil" };
+    expect(convertIngredient(oil, "ml", metric).quantity).toBe(40);
+    expect(convertIngredient(oil, "ml", us).quantity).toBe(29.6);
+
+    const salt: Ingredient = { quantity: 1, unit: "tsp", name: "salt" };
+    expect(convertIngredient(salt, "ml", metric).quantity).toBe(5);
+    expect(convertIngredient(salt, "ml", us).quantity).toBe(4.93);
+
+    // Default prefs carry no flag at all: metric cups mean Australian spoons.
+    expect(convertIngredient(oil, "ml", DEFAULT_MEASUREMENT_PREFS).quantity).toBe(40);
+  });
+
+  it("uses imperial pints and quarts", () => {
+    const milk: Ingredient = { quantity: 1, unit: "pint", name: "milk" };
+    expect(convertIngredient(milk, "ml", metric).quantity).toBe(568);
+    const stock: Ingredient = { quantity: 1, unit: "quart", name: "stock" };
+    expect(convertIngredient(stock, "ml", metric).quantity).toBe(1137);
+  });
+
+  it("falls back to US pints and quarts when Australian measures are off", () => {
+    const milk: Ingredient = { quantity: 1, unit: "pint", name: "milk" };
+    expect(convertIngredient(milk, "ml", us).quantity).toBe(473);
+    const stock: Ingredient = { quantity: 1, unit: "quart", name: "stock" };
+    expect(convertIngredient(stock, "ml", us).quantity).toBe(946);
+    // A 250 ml metric cup with US measures is not a combination the UI produces,
+    // but the flag decides the spoons either way.
+    expect(usesAustralianMeasures({ ...us, cupStandard: "metric" })).toBe(false);
+  });
+
+  it("is on by default for metric cups and off when US cups are chosen", () => {
+    expect(usesAustralianMeasures(DEFAULT_MEASUREMENT_PREFS)).toBe(true);
+    expect(usesAustralianMeasures({ ...DEFAULT_MEASUREMENT_PREFS, cupStandard: "us" })).toBe(
+      false
+    );
+    expect(usesAustralianMeasures(metric)).toBe(true);
+    expect(usesAustralianMeasures(us)).toBe(false);
+  });
+
+  it("converts back from ml with the same factors", () => {
+    expect(convertIngredient({ quantity: 40, unit: "ml", name: "water" }, "tbsp", metric).quantity).toBe(
+      2
+    );
+    expect(convertIngredient({ quantity: 568, unit: "ml", name: "milk" }, "pint", metric).quantity).toBe(
+      1
+    );
   });
 });
 
@@ -92,8 +154,9 @@ describe("density-aware conversion", () => {
 describe("same-family conversion", () => {
   it("converts tsp to tbsp", () => {
     const salt: Ingredient = { quantity: 3, unit: "tsp", name: "salt" };
-    const result = convertIngredient(salt, "tbsp", metric);
-    expect(result.quantity).toBe(1);
+    expect(convertIngredient(salt, "tbsp", us).quantity).toBe(1);
+    // 3 × 5 ml tsp = 15 ml = ¾ of a 20 ml Australian tbsp.
+    expect(convertIngredient(salt, "tbsp", metric).quantity).toBe(0.75);
   });
 
   it("converts g to kg", () => {
@@ -105,15 +168,35 @@ describe("same-family conversion", () => {
 
 describe("formatting", () => {
   it("formats cup fractions without float tails", () => {
-    expect(formatQuantity(0.333333, "cup")).toBe("1/3");
-    expect(formatQuantity(1.5, "cup")).toBe("1 1/2");
-    expect(formatQuantity(0.25, "tsp")).toBe("1/4");
-    expect(formatQuantity(1.25, "tsp")).toBe("1 1/4");
-    expect(formatQuantity(0.5, "tbsp")).toBe("1/2");
+    expect(formatQuantity(0.333333, "cup")).toBe("⅓");
+    expect(formatQuantity(1.5, "cup")).toBe("1 ½");
+    expect(formatQuantity(0.25, "tsp")).toBe("¼");
+    expect(formatQuantity(1.25, "tsp")).toBe("1 ¼");
+    expect(formatQuantity(0.5, "tbsp")).toBe("½");
+  });
+
+  it("formats countable fractions, never decimals like 0.75", () => {
+    expect(formatQuantity(0.5, "egg")).toBe("½");
+    expect(formatQuantity(0.75, "egg")).toBe("¾");
+    expect(formatQuantity(1.5, "piece")).toBe("1 ½");
+    expect(formatQuantity(3, "egg")).toBe("3");
+    // Not near a friendly fraction: keep the decimal.
+    expect(formatQuantity(0.7, "egg")).toBe("0.7");
   });
 
   it("formats quantity ranges", () => {
     expect(formatQuantityRange(4, "oz", 8)).toBe("4-8");
+  });
+
+  it("keeps metric mass and volume as decimals, not fractions", () => {
+    expect(formatQuantity(1.5, "g")).toBe("1.5");
+    expect(formatQuantity(0.5, "g")).toBe("0.5");
+    expect(formatQuantity(1.5, "ml")).toBe("1.5");
+    expect(formatQuantity(0.25, "kg")).toBe("0.25");
+    expect(formatQuantity(1.5, "l")).toBe("1.5");
+    // Imperial measures people still read as fractions
+    expect(formatQuantity(1.5, "oz")).toBe("1 ½");
+    expect(formatQuantity(0.5, "lb")).toBe("½");
   });
 });
 
@@ -131,6 +214,13 @@ describe("plurals", () => {
     expect(pluralUnitLabel("lb", 3)).toBe("lb");
     expect(pluralUnitLabel("ml", 250)).toBe("ml");
     expect(pluralUnitLabel("fl_oz", 2)).toBe("fl oz");
+  });
+
+  it("uses singular labels for fractions below one", () => {
+    expect(pluralUnitLabel("cup", 0.5)).toBe("cup");
+    expect(pluralUnitLabel("cup", 1.5)).toBe("cups");
+    expect(pluralProduceName("egg", 0.5)).toBe("egg");
+    expect(pluralProduceName("egg", 2)).toBe("eggs");
   });
 
   it("uses irregular produce plurals for produce units", () => {
@@ -151,6 +241,18 @@ describe("plurals", () => {
     expect(pluralProduceName("tomato", 2)).toBe("tomatoes");
     expect(pluralProduceName("banana", 3)).toBe("bananas");
     expect(pluralProduceName("sweet potato", 2)).toBe("sweet potatoes");
+  });
+
+  it("singularizes the last word of a name for a quantity of one", () => {
+    expect(singularizeName("diced tomatoes")).toBe("diced tomato");
+    expect(singularizeName("chopped onions")).toBe("chopped onion");
+    expect(singularizeName("frozen berries")).toBe("frozen berry");
+    expect(singularizeName("cherry tomatoes")).toBe("cherry tomato");
+    expect(singularizeName("glasses")).toBe("glass");
+    // Mass nouns and already-singular names are untouched
+    for (const name of ["hummus", "asparagus", "couscous", "flour", "salt", "egg"]) {
+      expect(singularizeName(name)).toBe(name);
+    }
   });
 });
 
@@ -319,6 +421,37 @@ describe("conversion keys", () => {
     expect(lookupDensity("water chestnut")?.key).toBe("water_chesnut");
     expect(lookupDensity("water chesnut")?.key).toBe("water_chesnut");
     expect(resolvePieceGrams({ quantity: 1, unit: "", name: "water chestnut" })).toBe(10);
+  });
+
+  it("matches water chestnut names to the generated catalog label", () => {
+    expect(matchingConversionLabels("water chestnut")[0]).toBe("water chesnut");
+    expect(matchingConversionLabels("water chestnuts")[0]).toBe("water chesnut");
+  });
+
+  it("keeps the alias and exact-only matching rules", () => {
+    // "pepper" is EXACT_ONLY: it must not leak into "bell pepper" (vegetable).
+    expect(matchingConversionLabels("pepper")).toEqual(["pepper"]);
+    expect(matchingConversionLabels("black pepper")).toEqual(["black pepper"]);
+    expect(matchingConversionLabels("bell pepper")).toEqual(["pepper"]);
+    // Empty input never touches the index.
+    expect(matchingConversionLabels("")).toEqual([]);
+    expect(matchingConversionLabels("   ")).toEqual([]);
+  });
+
+  it("builds the match index once and stays inside the typing budget", () => {
+    const names = ["water chestnut", "scallion", "shrimp", "unsalted butter", "tomato"];
+    for (const name of names) matchingConversionLabels(name);
+    const builds = conversionMatchIndexBuildCount();
+
+    // Benchmark-style guard: 200 lookups must average under 50 ms each. The old
+    // full-catalog scan took ~1 s per keypress at 4× CPU slowdown, so even this
+    // generous bound fails loudly if the per-call scan comes back.
+    const started = performance.now();
+    for (let i = 0; i < 200; i++) matchingConversionLabels(names[i % names.length]!);
+    expect((performance.now() - started) / 200).toBeLessThan(50);
+
+    // The index is a module-load artefact: lookups must not rebuild it.
+    expect(conversionMatchIndexBuildCount()).toBe(builds);
   });
 
   it("keeps conversions working for dropdown labels", () => {

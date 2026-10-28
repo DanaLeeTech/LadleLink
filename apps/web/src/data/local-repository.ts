@@ -20,9 +20,11 @@ import {
   saveMeasurementPrefs,
   saveSyncMeta,
 } from "./local-db";
+import { checkBackupPayload, validateImportRecipes } from "./recipe-validation";
 import type {
   DataSourceMode,
   DockerConfig,
+  ImportUrlOptions,
   RecipeRepository,
   SafFolderInfo,
   SyncResult,
@@ -41,7 +43,8 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-async function importViaNativeHttp(url: string): Promise<ParsedRecipe> {
+async function importViaNativeHttp(url: string, signal?: AbortSignal): Promise<ParsedRecipe> {
+  if (signal?.aborted) throw new Error("Import cancelled");
   const { parseRecipeHtml, USER_AGENT, DEFAULT_FETCH_TIMEOUT_MS } = await import(
     "@ladlelink/parser"
   );
@@ -58,6 +61,7 @@ async function importViaNativeHttp(url: string): Promise<ParsedRecipe> {
   if (res.status < 200 || res.status >= 300) {
     throw new Error(`Failed to fetch recipe page: HTTP ${res.status}`);
   }
+  if (signal?.aborted) throw new Error("Import cancelled");
   const html = typeof res.data === "string" ? res.data : String(res.data ?? "");
   return parseRecipeHtml(html, url);
 }
@@ -84,9 +88,11 @@ export function createLocalFirstRepository(): RecipeRepository {
         servings: input.servings,
         steps: input.steps,
         ingredients: input.ingredients,
+        sections: input.sections,
         tags: input.tags ?? [],
         notes: input.notes ?? null,
         photoPath: input.photoPath ?? null,
+        imageUrl: input.imageUrl ?? null,
         sourceUrl: input.sourceUrl ?? null,
         createdAt: ts,
         updatedAt: ts,
@@ -105,9 +111,11 @@ export function createLocalFirstRepository(): RecipeRepository {
         servings: input.servings,
         steps: input.steps,
         ingredients: input.ingredients,
+        sections: input.sections ?? existing.sections,
         tags: input.tags ?? [],
         notes: input.notes ?? null,
         photoPath: input.photoPath ?? null,
+        imageUrl: input.imageUrl ?? existing.imageUrl ?? null,
         sourceUrl: input.sourceUrl ?? null,
         updatedAt: nowIso(),
       };
@@ -121,16 +129,17 @@ export function createLocalFirstRepository(): RecipeRepository {
       void runSync().catch(() => undefined);
     },
 
-    async importFromUrl(url: string) {
+    async importFromUrl(url: string, options?: ImportUrlOptions) {
       const meta = await loadSyncMeta();
       if (meta.mode === "docker" && meta.dockerBaseUrl) {
         const parsed = (await dockerImportFromUrl(
           { baseUrl: meta.dockerBaseUrl, authToken: meta.authToken },
-          url
+          url,
+          options?.signal
         )) as ParsedRecipe;
         return parsed;
       }
-      return importViaNativeHttp(url);
+      return importViaNativeHttp(url, options?.signal);
     },
 
     async getMeasurementPrefs() {
@@ -147,17 +156,21 @@ export function createLocalFirstRepository(): RecipeRepository {
       return exportLocal();
     },
 
-    async importAll(payload: ExportPayload) {
-      if (payload.version !== 1 || !Array.isArray(payload.recipes)) {
-        throw new Error("Invalid export payload");
-      }
+    async importAll(raw: ExportPayload) {
+      const payload = checkBackupPayload(raw);
+      // Same rules as the demo: never write a row that would render a blank page.
+      const { recipes, reasons } = validateImportRecipes(payload.recipes);
       const existing = await listLocalRecipes();
       const byId = new Map(existing.map((r) => [r.id, r]));
       let imported = 0;
-      for (const recipe of payload.recipes) {
+      for (const recipe of recipes) {
         const cur = byId.get(recipe.id);
         if (!cur || recipe.updatedAt > cur.updatedAt) {
-          await putLocalRecipe(recipe, { dirty: true, lastSyncedUpdatedAt: null });
+          await putLocalRecipe(recipe, {
+            dirty: true,
+            lastSyncedUpdatedAt: null,
+            clearDeleted: true,
+          });
           imported += 1;
         }
       }
@@ -165,7 +178,7 @@ export function createLocalFirstRepository(): RecipeRepository {
         await saveMeasurementPrefs(payload.settings.measurement);
       }
       void runSync().catch(() => undefined);
-      return { imported };
+      return { imported, skipped: reasons.length, reasons };
     },
 
     async getMode() {

@@ -2,9 +2,13 @@ import type { Ingredient, ProduceSize } from "@ladlelink/types";
 import {
   canonicalizeUnit,
   defaultProduceSize,
+  gramsToMassUnit,
   inferConversionKey,
+  massUnitToGrams,
   PRODUCE_UNIT_SET,
+  singularizeName,
   unitFamily,
+  unitLabel,
   unitPatternAlternation,
 } from "@ladlelink/units";
 
@@ -65,7 +69,8 @@ export function decodeHtmlEntities(text: string): string {
 
 const UNIT_ALT = unitPatternAlternation();
 /** Letter-bounded so short forms (l, g, t, c) do not steal prefixes of words like "large". */
-const UNIT_PATTERN = `((?<![a-zA-Z])(?:${UNIT_ALT})(?![a-zA-Z]))`;
+const UNIT_BODY = `(?<![a-zA-Z])(?:${UNIT_ALT})(?![a-zA-Z])`;
+const UNIT_PATTERN = `(${UNIT_BODY})`;
 const SIZE_PATTERN = "(small|medium|med|large)";
 
 /** Seasoning-style countables that often appear without a leading number ("a pinch of salt"). */
@@ -73,7 +78,7 @@ const BARE_SEASONING_UNITS =
   "pinch|pinches|dash|dashes|drop|drops|smidgen|smidgens|handful|handfuls|twist|twists|dollop|dollops|knob|knobs";
 const BARE_SEASONING_PATTERN = `((?<![a-zA-Z])(?:${BARE_SEASONING_UNITS})(?![a-zA-Z]))`;
 
-const NUMBERED_STEP_PREFIX = /^\s*\d+\s*[.):\-]\s*/;
+const NUMBERED_STEP_PREFIX = /^\s*(?:(?:step\s*)?\d+\s*[.):\-–—]\s*(?!\d)|step\s*\d+\s+)/i;
 
 /** Phrases that mark garnish even when not the leading unit token. */
 const GARNISH_PHRASE =
@@ -105,6 +110,7 @@ function stripToTastePhrase(text: string): string {
 
 type MeasureSpan = {
   quantity: number;
+  quantityMax?: number;
   unit: string;
   index: number;
   length: number;
@@ -114,29 +120,32 @@ type MeasureSpan = {
 const QTY_HEDGE = "(?:(?:about|approx\\.?|approximately|~)\\s+)?";
 
 /**
- * Global qty+unit matcher. Capture groups:
- * 1–3 mixed whole/num/den, 4–5 fraction, 6 decimal, 7 unit.
+ * Global qty+unit matcher. Named groups: rangeMin/rangeMax, mixed, frac,
+ * decimal, unit — a range like "900–1,350 g" strips as one span.
  */
 function measureRegex(): RegExp {
   return new RegExp(
     `${QTY_HEDGE}(?:` +
-      `(\\d+)(?:\\s+|\\s*-\\s*)(\\d+)/(\\d+)` +
-      `|(\\d+)/(\\d+)` +
-      `|(\\d+(?:\\.\\d+)?)` +
-      `)\\s*-?\\s*${UNIT_PATTERN}\\.?`,
+      `(?<rangeMin>\\d+(?:\\.\\d+)?)\\s*(?:-|to)\\s*(?<rangeMax>\\d+(?:\\.\\d+)?)` +
+      `|(?<mixedWhole>\\d+)(?:\\s+|\\s*-\\s*)(?<mixedNum>\\d+)/(?<mixedDen>\\d+)` +
+      `|(?<fracNum>\\d+)/(?<fracDen>\\d+)` +
+      `|(?<decimal>\\d+(?:\\.\\d+)?)` +
+      `)\\s*-?\\s*(?<unit>${UNIT_BODY})\\.?`,
     "gi"
   );
 }
 
 function quantityFromMeasureMatch(m: RegExpMatchArray): number | null {
-  if (m[1] != null && m[2] != null && m[3] != null) {
-    return Number(m[1]) + Number(m[2]) / Number(m[3]);
+  const g = m.groups ?? {};
+  if (g.rangeMin != null) return Number(g.rangeMin);
+  if (g.mixedWhole != null && g.mixedNum != null && g.mixedDen != null) {
+    return Number(g.mixedWhole) + Number(g.mixedNum) / Number(g.mixedDen);
   }
-  if (m[4] != null && m[5] != null) {
-    return Number(m[4]) / Number(m[5]);
+  if (g.fracNum != null && g.fracDen != null) {
+    return Number(g.fracNum) / Number(g.fracDen);
   }
-  if (m[6] != null) {
-    return Number(m[6]);
+  if (g.decimal != null) {
+    return Number(g.decimal);
   }
   return null;
 }
@@ -148,13 +157,15 @@ function findMeasures(text: string): MeasureSpan[] {
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     const quantity = quantityFromMeasureMatch(m);
-    const unitRaw = m[7];
+    const unitRaw = m.groups?.unit;
     if (quantity == null || !unitRaw || !Number.isFinite(quantity)) {
       if (m[0].length === 0) re.lastIndex++;
       continue;
     }
     out.push({
       quantity,
+      quantityMax:
+        m.groups?.rangeMax != null ? Number(m.groups.rangeMax) : undefined,
       unit: canonicalizeUnit(unitRaw),
       index: m.index,
       length: m[0].length,
@@ -226,12 +237,164 @@ function stripMeasures(text: string, measures: MeasureSpan[]): string {
   return cleanName(result);
 }
 
+/** Notes worth keeping: "400 g each", "heaped", "plus 2 tbsp". */
+const EDGE_JUNK = /^[\s,;:.\-–—]+|[\s,;:.\-–—]+$/g;
+
+function trimEdges(text: string): string {
+  let out = text.replace(EDGE_JUNK, "");
+  const count = (s: string, ch: string) => s.split(ch).length - 1;
+  while (out.startsWith("(") && count(out, "(") > count(out, ")")) {
+    out = out.slice(1).replace(EDGE_JUNK, "");
+  }
+  while (out.endsWith(")") && count(out, ")") > count(out, "(")) {
+    out = out.slice(0, -1).replace(EDGE_JUNK, "");
+  }
+  // Whole line wrapped in brackets: "(2 cups flour)"
+  while (
+    out.startsWith("(") &&
+    out.endsWith(")") &&
+    count(out, "(") === count(out, ")")
+  ) {
+    out = trimEdges(out.slice(1, -1));
+  }
+  return out;
+}
+
+/** Unit token used by the notes extractors, without the capturing group offset. */
+const EACH_WEIGHT_RE = new RegExp(
+  `\\(?\\s*,?\\s*(?:about|approx\\.?|approximately)?\\s*(\\d+(?:\\.\\d+)?)(?:\\s*(?:-|to)\\s*(\\d+(?:\\.\\d+)?))?\\s*${UNIT_PATTERN}\\.?\\s+each\\)?`,
+  "i"
+);
+
+/** "2 x 400g cans" → countable amount with the pack size as a note. */
+const PACKED_MULTIPLIER_RE = new RegExp(
+  `^(\\d+(?:\\.\\d+)?)\\s*[x×]\\s*(\\d+(?:\\.\\d+)?)\\s*${UNIT_PATTERN}\\.?\\s+`,
+  "i"
+);
+
+/** "heaped tbsp", "level teaspoon" — the modifier moves to the notes. */
+const HEAPED_RE = new RegExp(
+  `^(\\d+(?:\\.\\d+)?)\\s+(heaped|heaping|level|rounded|generous|scant)\\s+(?=${UNIT_PATTERN})`,
+  "i"
+);
+/** "2 tbsp (heaped) flour" / "2 tbsp heaped flour" — same modifier after the unit. */
+const HEAPED_AFTER_RE = new RegExp(
+  `^(\\d+(?:\\.\\d+)?)\\s*${UNIT_PATTERN}\\.?\\s*\\(?\\s*(heaped|heaping|level|rounded|generous|scant)\\s*\\)?\\s+`,
+  "i"
+);
+
+type PreparedLine = { text: string; notes: string[] };
+
+/**
+ * Normalize a line before the core parse: measure typography, French units,
+ * plus/package amounts and per-item weights become notes instead of noise.
+ */
+function prepareIngredientLine(cleaned: string): PreparedLine {
+  const notes: string[] = [];
+  let text = cleaned
+    // Unicode fraction slash (U+2044), dash-like separators, thin/nbsp spaces
+    .replace(/\u2044/g, "/")
+    .replace(/[\u2012\u2013\u2014\u2212]/g, "-")
+    .replace(/[\u00A0\u2007\u2009\u202F\u2008]/g, " ")
+    // "1,350 g" thousands separator
+    .replace(/(\d),(?=\d{3}(?:\D|$))/g, "$1")
+    // Plus/minus amounts read as a range
+    .replace(/\s*(?:±|\+\s*\/\s*-)\s*/g, "-");
+  text = trimEdges(text);
+
+  for (const [char, value] of Object.entries(UNICODE_FRACTIONS)) {
+    text = text.replace(
+      new RegExp(`(\\d)\\s*${char}`),
+      (_, whole) => `${Number(whole) + value}`
+    );
+    text = text.replace(char, String(value));
+  }
+  // Mixed numbers → decimal so ranges like "2 1/2 to 3 cups" parse as one amount
+  const toDecimal = (_: string, whole: string, num: string, den: string) =>
+    String(Number(whole) + Number(num) / Number(den));
+  text = text
+    .replace(/(\d+)\s*-\s*(\d+)\/(\d+)/g, toDecimal)
+    .replace(/(\d+)\s+(\d+)\/(\d+)/g, toDecimal);
+
+  // "500 gm" / "500 gms"
+  text = text.replace(/(?<![a-zA-Z])gms?(?![a-zA-Z])/gi, "g");
+  // French spoon measures
+  text = text
+    .replace(/\b(?:cuill(?:e|è)res?|c\.?)\s*à\s*soupe(?![a-zA-Z])/gi, "tbsp")
+    .replace(/\b(?:cuill(?:e|è)res?|c\.?)\s*à\s*caf(?:é|e)(?![a-zA-Z])/gi, "tsp");
+  // Centilitres have no canonical unit; keep the amount in millilitres
+  text = text.replace(/(\d+(?:[.,]\d+)?)\s*cl\b/gi, (_, n: string) =>
+    `${Number(n.replace(",", ".")) * 10} ml`
+  );
+
+  const each = text.match(EACH_WEIGHT_RE);
+  if (each) {
+    const unit = unitLabel(canonicalizeUnit(each[3] ?? ""));
+    const amount = each[2] ? `${each[1]}-${each[2]}` : `${each[1]}`;
+    notes.push(`${amount} ${unit} each`.replace(/\s+/g, " ").trim());
+    text = text.replace(each[0], " ");
+  }
+
+  const packed = text.match(PACKED_MULTIPLIER_RE);
+  if (packed) {
+    const unit = unitLabel(canonicalizeUnit(packed[3] ?? ""));
+    notes.push(`${packed[2]} ${unit} each`.replace(/\s+/g, " ").trim());
+    text = text.replace(packed[0], `${packed[1]} `);
+  }
+
+  const heaped = text.match(HEAPED_RE);
+  if (heaped) {
+    notes.push(heaped[2]!.toLowerCase());
+    text = text.replace(HEAPED_RE, `${heaped[1]} `);
+  }
+
+  const heapedAfter = text.match(HEAPED_AFTER_RE);
+  if (heapedAfter) {
+    notes.push(heapedAfter[3]!.toLowerCase());
+    text = text.replace(HEAPED_AFTER_RE, `${heapedAfter[1]} ${heapedAfter[2]} `);
+  }
+
+  // "2 cups plus 2 tbsp flour" — keep the second amount as a note
+  const plus = text.match(/\s+(?:plus|\+)\s+(.+)$/i);
+  if (plus) {
+    const extra = findMeasures(plus[1]!)[0];
+    if (extra) {
+      const raw = plus[1]!.slice(extra.index, extra.index + extra.length).trim();
+      notes.push(`plus ${raw}`);
+      const tail = plus[1]!.slice(extra.index + extra.length);
+      text = `${text.slice(0, plus.index)} ${tail}`;
+    }
+  }
+
+  return { text: trimEdges(text.replace(/\s+/g, " ")), notes };
+}
+
+function cleanNotes(note: string): string {
+  return note
+    .replace(/^[\s,;:()\[\]\-–—]+|[\s,;:()\[\]\-–—]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function parseIngredientLine(line: string): Ingredient {
   const cleaned = decodeHtmlEntities(line).replace(/\s+/g, " ").trim();
   if (!cleaned) {
     return { quantity: 0, unit: "", name: "" };
   }
 
+  const { text, notes } = prepareIngredientLine(cleaned);
+  if (!text.trim()) {
+    const empty: Ingredient = { quantity: 0, unit: "", name: "" };
+    const note = cleanNotes(notes.join(", "));
+    return note ? { ...empty, notes: note } : empty;
+  }
+
+  const ing = parseIngredientCore(text);
+  const allNotes = cleanNotes([...notes, ing.notes].filter(Boolean).join(", "));
+  return allNotes ? { ...ing, notes: allNotes } : ing;
+}
+
+function parseIngredientCore(cleaned: string): Ingredient {
   // to taste (no leading quantity)
   if (/to\s*taste/i.test(cleaned) && !/^\d/.test(cleaned)) {
     const name = stripToTastePhrase(cleaned) || cleaned;
@@ -245,14 +408,26 @@ export function parseIngredientLine(line: string): Ingredient {
   }
 
   let rest = cleaned;
-  // Normalize unicode fraction slash (U+2044) and dash-like separators used in mixed numbers
-  rest = rest.replace(/\u2044/g, "/").replace(/[\u2012\u2013\u2014\u2212]/g, "-");
-  // Collapse thin/narrow/nbsp spaces so "1 1/4" still matches
-  rest = rest.replace(/[\u00A0\u2007\u2009\u202F\u2008]/g, " ");
 
-  for (const [char, value] of Object.entries(UNICODE_FRACTIONS)) {
-    rest = rest.replace(new RegExp(`(\\d)\\s*${char}`), (_, whole) => `${Number(whole) + value}`);
-    rest = rest.replace(char, String(value));
+  // Combined mass: "1 lb 4 oz", "1 kg 200 g"
+  const combined = rest.match(
+    new RegExp(
+      `^(\\d+(?:\\.\\d+)?)\\s*${UNIT_PATTERN}\\.?\\s+(\\d+(?:\\.\\d+)?)\\s*${UNIT_PATTERN}\\.?(?:\\s+(.*))?$`,
+      "i"
+    )
+  );
+  if (combined) {
+    const big = canonicalizeUnit(combined[2]!);
+    const small = canonicalizeUnit(combined[4]!);
+    const bigGrams = massUnitToGrams(1, big);
+    const smallGrams = massUnitToGrams(1, small);
+    if (bigGrams != null && smallGrams != null && bigGrams > smallGrams) {
+      const grams = Number(combined[1]) * bigGrams + Number(combined[3]) * smallGrams;
+      const quantity = gramsToMassUnit(grams, big);
+      if (quantity != null) {
+        return fromParts(Math.round(quantity * 1e4) / 1e4, undefined, big, combined[5]);
+      }
+    }
   }
 
   // Quantity range: 4 to 8 ounces, 4-8 oz (not mixed fractions like 1-1/2)
@@ -276,11 +451,13 @@ export function parseIngredientLine(line: string): Ingredient {
   const measures = findMeasures(rest);
   if (measures.length >= 2) {
     const chosen = preferMeasure(measures);
-    return finalize({
+    const dual = finalize({
       quantity: chosen.quantity,
       unit: chosen.unit,
       name: stripMeasures(rest, measures),
     });
+    if (chosen.quantityMax != null) dual.quantityMax = chosen.quantityMax;
+    return dual;
   }
 
   // Parenthetical amount: "1 can (14 oz) tomatoes" or "(8 oz) package cream cheese"
@@ -462,6 +639,9 @@ function finalize(ing: {
     name = stripToTastePhrase(name) || name;
   }
 
+  // "1 x 400 g tin diced tomatoes" → "diced tomato"
+  if (quantity === 1) name = singularizeName(name);
+
   const result: Ingredient = { quantity, unit, name };
   if (size) result.size = size;
   return withDefaultProduceSize(withSuggestedKey(result));
@@ -486,7 +666,11 @@ function withDefaultProduceSize(ing: Ingredient): Ingredient {
 }
 
 function cleanName(name: string): string {
-  return name.replace(/^of\s+/i, "").replace(/\s+/g, " ").trim();
+  return name
+    .replace(/^of\s+/i, "")
+    .replace(/^[\s,;:\-–—]+|[\s,;:\-–—]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /** Prefer spaced produce labels (sweet potato) over underscored canonical units. */

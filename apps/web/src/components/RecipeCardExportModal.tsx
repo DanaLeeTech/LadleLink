@@ -28,6 +28,9 @@ export function RecipeCardExportModal({
   onClose,
 }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const [colors, setColors] = useState<RecipeCardColors>(DEFAULT_RECIPE_CARD_COLORS);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -61,6 +64,23 @@ export function RecipeCardExportModal({
       cancelled = true;
     };
   }, [payload]);
+
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    panelRef.current?.querySelector<HTMLElement>("input, select, button")?.focus();
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.stopPropagation();
+      onCloseRef.current();
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previous?.focus?.();
+    };
+  }, []);
 
   useEffect(() => {
     function updateScale() {
@@ -109,6 +129,7 @@ export function RecipeCardExportModal({
       }}
     >
       <div
+        ref={panelRef}
         className="modal-panel recipe-card-export-modal"
         role="dialog"
         aria-modal="true"

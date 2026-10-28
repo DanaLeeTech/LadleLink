@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
-import type { ParsedRecipe } from "@ladlelink/types";
-import { asStringArray, parseIngredientLine, parseServings } from "./ingredient-line.js";
+import type { ParsedRecipe, RecipeSection } from "@ladlelink/types";
+import { asStringArray, cleanRecipeText, parseIngredientLine, parseServings } from "./ingredient-line.js";
 
 function isRecipeType(type: unknown): boolean {
   if (!type) return false;
@@ -19,11 +19,55 @@ function unwrapGraph(data: unknown): unknown[] {
   return [];
 }
 
+/**
+ * Flatten `recipeInstructions` into steps, keeping HowToSection headings as
+ * section rows ("For the icing").
+ */
+export function instructionsWithSections(value: unknown): {
+  steps: string[];
+  sections: RecipeSection[];
+} {
+  const steps: string[] = [];
+  const sections: RecipeSection[] = [];
+
+  const walk = (node: unknown) => {
+    if (!node) return;
+    if (typeof node === "string") {
+      steps.push(...asStringArray(node));
+      return;
+    }
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
+    if (typeof node !== "object") return;
+    const obj = node as Record<string, unknown>;
+
+    const children = obj.itemListElement ?? obj.steps;
+    if (children) {
+      const name = typeof obj.name === "string" ? cleanRecipeText(obj.name) : "";
+      if (name) sections.push({ kind: "steps", at: steps.length, title: name });
+      walk(children);
+      return;
+    }
+    if (typeof obj.text === "string") {
+      steps.push(...asStringArray(obj.text));
+      return;
+    }
+    if (typeof obj.name === "string") steps.push(...asStringArray(obj.name));
+  };
+
+  walk(value);
+  return { steps, sections };
+}
+
 function recipeFromJsonLd(obj: Record<string, unknown>, sourceUrl: string): ParsedRecipe | null {
   if (!isRecipeType(obj["@type"])) return null;
 
   const ingredientLines = asStringArray(obj.recipeIngredient ?? obj.ingredients);
-  const steps = asStringArray(obj.recipeInstructions ?? obj.instructions);
+  const { steps, sections } = instructionsWithSections(
+    obj.recipeInstructions ?? obj.instructions
+  );
   const image = obj.image;
   let photoUrl: string | null = null;
   if (typeof image === "string") photoUrl = image;
@@ -39,6 +83,7 @@ function recipeFromJsonLd(obj: Record<string, unknown>, sourceUrl: string): Pars
     servings: parseServings(obj.recipeYield ?? obj.yield ?? 1),
     ingredients: ingredientLines.map(parseIngredientLine),
     steps,
+    ...(sections.length ? { sections } : {}),
     tags: asStringArray(obj.keywords ?? obj.recipeCategory),
     notes: typeof obj.description === "string" ? obj.description : null,
     photoUrl,

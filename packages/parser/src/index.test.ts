@@ -11,6 +11,7 @@ import {
   parseRecipeHtml,
   parseRecipeText,
   parseStepsFromEditor,
+  stripStepNumber,
 } from "./index.js";
 
 const fixtures = join(dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
@@ -453,6 +454,248 @@ describe("parseIngredientLine", () => {
   });
 });
 
+describe("ingredient line fixes", () => {
+  it("accepts gm and gms for grams", () => {
+    for (const line of [
+      "500 gm beef mince",
+      "500 gms beef mince",
+      "500 grams beef mince",
+      "500 gram beef mince",
+    ]) {
+      expect(parseIngredientLine(line)).toMatchObject({
+        quantity: 500,
+        unit: "g",
+        name: "beef mince",
+      });
+    }
+  });
+
+  it("keeps a package count and puts the pack size in the notes", () => {
+    expect(parseIngredientLine("2 x 400g cans diced tomatoes")).toMatchObject({
+      quantity: 2,
+      unit: "can",
+      name: "diced tomatoes",
+      notes: "400 g each",
+    });
+    expect(parseIngredientLine("2 x 400g cans diced tomatoes").size).toBeUndefined();
+    expect(parseIngredientLine("2 x 400 g tins chopped tomatoes")).toMatchObject({
+      quantity: 2,
+      unit: "tin",
+      name: "chopped tomatoes",
+      notes: "400 g each",
+    });
+  });
+
+  it("keeps the ingredient name when each piece has a weight", () => {
+    expect(parseIngredientLine("4 chicken breasts, 150 - 180g each")).toMatchObject({
+      quantity: 4,
+      unit: "",
+      name: expect.stringMatching(/^chicken breasts?$/),
+      notes: "150-180 g each",
+    });
+    expect(parseIngredientLine("4 chicken breasts (150–180g each)")).toMatchObject({
+      quantity: 4,
+      name: expect.stringMatching(/^chicken breasts?$/),
+      notes: "150-180 g each",
+    });
+  });
+
+  it("keeps a plus amount as a note", () => {
+    expect(parseIngredientLine("2 cups plus 2 tbsp flour, sifted")).toMatchObject({
+      quantity: 2,
+      unit: "cup",
+      name: "flour, sifted",
+      notes: "plus 2 tbsp",
+    });
+    expect(parseIngredientLine("1 tbsp + 1 tsp sesame oil")).toMatchObject({
+      quantity: 1,
+      unit: "tbsp",
+      name: "sesame oil",
+      notes: "plus 1 tsp",
+    });
+  });
+
+  it("combines imperial or metric weighings on one line", () => {
+    expect(parseIngredientLine("1 lb 4 oz")).toMatchObject({ unit: "lb" });
+    expect(parseIngredientLine("1 lb 4 oz").quantity).toBeCloseTo(1.25, 5);
+    expect(parseIngredientLine("2 lb 4 oz pork shoulder")).toMatchObject({
+      unit: "lb",
+      name: "pork shoulder",
+    });
+    expect(parseIngredientLine("2 lb 4 oz pork shoulder").quantity).toBeCloseTo(2.25, 5);
+    expect(parseIngredientLine("1 kg 200 g potatoes")).toMatchObject({
+      quantity: 1.2,
+      unit: "kg",
+      name: "potatoes",
+    });
+  });
+
+  it("keeps heaped and level as notes", () => {
+    expect(parseIngredientLine("2 heaped tbsp flour")).toMatchObject({
+      quantity: 2,
+      unit: "tbsp",
+      name: "flour",
+      notes: "heaped",
+    });
+    expect(parseIngredientLine("2 heaped teaspoons sugar")).toMatchObject({
+      quantity: 2,
+      unit: "tsp",
+      name: "sugar",
+      notes: "heaped",
+    });
+    expect(parseIngredientLine("1 level tsp salt")).toMatchObject({
+      quantity: 1,
+      unit: "tsp",
+      name: "salt",
+      notes: "level",
+    });
+    expect(parseIngredientLine("1 heaped teaspoon salt")).toMatchObject({
+      quantity: 1,
+      unit: "tsp",
+      name: "salt",
+      notes: "heaped",
+    });
+  });
+
+  it("handles NYT-style ranges without garbling the name", () => {
+    expect(parseIngredientLine("2–3 tbsp olive oil")).toMatchObject({
+      quantity: 2,
+      quantityMax: 3,
+      unit: "tbsp",
+      name: "olive oil",
+    });
+    expect(parseIngredientLine("2 1/2 to 3 cups flour")).toMatchObject({
+      quantity: 2.5,
+      quantityMax: 3,
+      unit: "cup",
+      name: "flour",
+    });
+    expect(parseIngredientLine("2 ± 3 cups stock")).toMatchObject({
+      quantity: 2,
+      quantityMax: 3,
+      unit: "cup",
+      name: "stock",
+    });
+    expect(parseIngredientLine("2 pounds (900–1,350 g) beef chuck")).toMatchObject({
+      quantity: 2,
+      unit: "lb",
+      name: "beef chuck",
+    });
+    expect(parseIngredientLine("3 cups (720-750 ml) water")).toMatchObject({
+      quantity: 720,
+      quantityMax: 750,
+      unit: "ml",
+      name: "water",
+    });
+  });
+
+  it("singularizes produce for a quantity of one and keeps plurals countable", () => {
+    expect(parseIngredientLine("2 onions")).toMatchObject({
+      quantity: 2,
+      unit: "",
+      name: "onion",
+      conversionKey: "onion",
+    });
+    expect(parseIngredientLine("1 tomatoes")).toMatchObject({
+      quantity: 1,
+      unit: "",
+      name: "tomato",
+    });
+    expect(parseIngredientLine("1 tomato")).toMatchObject({
+      quantity: 1,
+      unit: "",
+      name: "tomato",
+    });
+    // Counted produce keeps the catalog singular label for any quantity
+    expect(parseIngredientLine("2 tomatoes")).toMatchObject({
+      quantity: 2,
+      unit: "",
+      name: expect.stringMatching(/^tomato(es)?$/),
+    });
+    expect(parseIngredientLine("2 onions").name).not.toMatch(/onions$/);
+  });
+
+  it("trims leftover punctuation and brackets around the line", () => {
+    for (const line of [", 2 cups flour ,", "- 2 cups flour -", "(2 cups flour)"]) {
+      expect(parseIngredientLine(line)).toMatchObject({
+        quantity: 2,
+        unit: "cup",
+        name: "flour",
+      });
+    }
+  });
+
+  it("singularizes an ordinary name for a quantity of one", () => {
+    expect(parseIngredientLine("1 x 400g tin tomatoes")).toMatchObject({
+      quantity: 1,
+      unit: "tin",
+      name: "tomato",
+      notes: "400 g each",
+    });
+    expect(parseIngredientLine("1 x 400g tin diced tomatoes").name).toBe("diced tomato");
+    // Still plural when there is more than one tin
+    expect(parseIngredientLine("2 x 400g tins diced tomatoes").name).toBe("diced tomatoes");
+    expect(parseIngredientLine("1 cup crushed tomatoes").name).toBe("crushed tomato");
+  });
+
+  it("moves a parenthetical heaped/level word after the unit into the notes", () => {
+    expect(parseIngredientLine("2 tbsp (heaped) flour")).toMatchObject({
+      quantity: 2,
+      unit: "tbsp",
+      name: "flour",
+      notes: "heaped",
+    });
+    expect(parseIngredientLine("2 tbsp heaped flour")).toMatchObject({
+      quantity: 2,
+      unit: "tbsp",
+      name: "flour",
+      notes: "heaped",
+    });
+    expect(parseIngredientLine("1 cup (level) sugar").notes).toBe("level");
+    // A useful conversion in brackets is still a conversion, not a note
+    expect(parseIngredientLine("1 cup (250 ml) milk")).toMatchObject({
+      unit: "ml",
+      name: "milk",
+    });
+  });
+
+  it("reads basic French measures", () => {
+    expect(parseIngredientLine("2 cuillères à soupe beurre")).toMatchObject({
+      quantity: 2,
+      unit: "tbsp",
+      name: "beurre",
+    });
+    expect(parseIngredientLine("1 cuillère à café sel")).toMatchObject({
+      quantity: 1,
+      unit: "tsp",
+      name: "sel",
+    });
+    expect(parseIngredientLine("1 c. à soupe huile")).toMatchObject({
+      quantity: 1,
+      unit: "tbsp",
+      name: "huile",
+    });
+    expect(parseIngredientLine("20 cl crème")).toMatchObject({
+      quantity: 200,
+      unit: "ml",
+      name: "crème",
+    });
+    expect(parseIngredientLine("250 g farine")).toMatchObject({
+      quantity: 250,
+      unit: "g",
+      name: "farine",
+    });
+  });
+
+  it("reads thousands separators in weights", () => {
+    expect(parseIngredientLine("1,350 g beef")).toMatchObject({
+      quantity: 1350,
+      unit: "g",
+      name: "beef",
+    });
+  });
+});
+
 describe("step editor helpers", () => {
   it("decodes HTML entities in steps", () => {
     expect(
@@ -567,6 +810,100 @@ Instructions
     expect(recipe.notes).toContain("Serves: 12");
     expect(recipe.ingredients).toHaveLength(1);
     expect(recipe.steps).toEqual(["Mix and bake."]);
+  });
+
+  it("uses a Markdown heading as the title and reads Serves / Makes yields", () => {
+    const markdown = parseRecipeText(
+      [
+        "## Chilli Prawns",
+        "",
+        "Serves 4",
+        "",
+        "### Ingredients",
+        "- 500 g prawns",
+        "- 2 tbsp olive oil",
+        "",
+        "### Method",
+        "1. Heat the oil.",
+        "2. Fry the prawns.",
+      ].join("\n")
+    );
+    expect(markdown.title).toBe("Chilli Prawns");
+    expect(markdown.servings).toBe(4);
+    expect(markdown.ingredients).toHaveLength(2);
+    expect(markdown.steps).toEqual(["Heat the oil.", "Fry the prawns."]);
+
+    const closingHashes = parseRecipeText(
+      [
+        "# Brownies #",
+        "",
+        "## Ingredients",
+        "- 200 g butter",
+        "- 200 g dark chocolate",
+        "- 3 eggs",
+        "",
+        "## Method",
+        "1. Melt the butter.",
+        "2. Stir in the eggs and bake.",
+      ].join("\n")
+    );
+    expect(closingHashes.title).toBe("Brownies");
+
+    const makes = parseRecipeText(
+      ["# Rum Balls", "Makes 12", "Ingredients", "2 cups biscuit crumbs", "Mix well."].join(
+        "\n"
+      )
+    );
+    expect(makes.title).toBe("Rum Balls");
+    expect(makes.servings).toBe(12);
+  });
+
+  it("takes the first heading over intro prose, and any casing of Serves", () => {
+    const intro = parseRecipeText(
+      [
+        "# Sunday roast",
+        "",
+        "This is my nan's recipe, handed down every winter.",
+        "",
+        "SERVES 4",
+        "",
+        "Ingredients",
+        "- 1 kg beef",
+        "",
+        "Method",
+        "Roast the beef.",
+      ].join("\n")
+    );
+    expect(intro.title).toBe("Sunday roast");
+    expect(intro.servings).toBe(4);
+
+    // A section heading is never the recipe title.
+    const sectionFirst = parseRecipeText(
+      "Sunday roast\n\n# Ingredients\n- 1 kg beef\n\n# Method\nRoast the beef."
+    );
+    expect(sectionFirst.title).toBe("Sunday roast");
+  });
+
+  it("falls back to the first non-empty line when there is no heading", () => {
+    const plain = parseRecipeText(
+      "Sunday roast\n\nServes 6\n\nIngredients\n- 1 kg beef\n\nMethod\nRoast the beef."
+    );
+    expect(plain.title).toBe("Sunday roast");
+    expect(plain.servings).toBe(6);
+  });
+
+  // Fails today: a one-word line is dropped by the lone-username noise rule, so the
+  // heading is not used as the title. Needed for common pastes like "# Brownies".
+  it("keeps a one-word heading as the title", () => {
+    const recipe = parseRecipeText(
+      "# Brownies\n\nIngredients\n- 2 cups flour\n\nMethod\n1. Mix.\n2. Bake."
+    );
+    expect(recipe.title).toBe("Brownies");
+
+    for (const heading of ["## Brownies", "#   Brownies"]) {
+      const body = `${heading}\n\nIngredients\n- 2 cups flour\n\nMethod\n1. Mix.\n2. Bake.`;
+      expect(parseRecipeText(body).title).toBe("Brownies");
+    }
   });
 
   it("throws when no ingredients can be extracted", () => {
@@ -726,6 +1063,303 @@ a [J 4
     });
     expect(recipe.steps.join(" ")).toMatch(/Mix everything together.*fridge to set/i);
     expect(recipe.steps.join(" ")).not.toMatch(/\[J|livw rat/i);
+  });
+});
+
+describe("import reliability", () => {
+  const read = (name: string) => readFileSync(join(fixtures, name), "utf8");
+
+  it("rejects a 404 page", () => {
+    expect(() =>
+      parseRecipeHtml(read("not-found.html"), "https://example.com/missing")
+    ).toThrow(/Could not extract a recipe/);
+  });
+
+  it("rejects a Wikipedia-style article", () => {
+    expect(() =>
+      parseRecipeHtml(read("wikipedia-article.html"), "https://en.wikipedia.org/wiki/Pancake")
+    ).toThrow(/Could not extract a recipe/);
+  });
+
+  it("ignores navigation and menu link lists when there is no schema", () => {
+    expect(parseHeuristic(read("nav-list.html"), "https://example.com/recipes")).toBeNull();
+    expect(() =>
+      parseRecipeHtml(read("nav-list.html"), "https://example.com/recipes")
+    ).toThrow(/Could not extract a recipe/);
+  });
+
+  it("keeps HowToSection headings and strips step prefixes", () => {
+    const recipe = parseRecipeHtml(read("howto-section.html"), "https://example.com/cake");
+
+    expect(recipe.steps).toEqual([
+      "Cream the butter and sugar.",
+      "Beat in the eggs and fold in the flour.",
+      "Mix the lemon juice with icing sugar and drizzle over.",
+    ]);
+    expect(recipe.sections).toEqual([
+      { kind: "steps", at: 0, title: "For the cake" },
+      { kind: "steps", at: 2, title: "For the icing" },
+    ]);
+    expect(recipe.photoUrl).toBe("https://example.com/images/lemon-cake.jpg");
+  });
+
+  it("parses a Coles-style page: servings, ingredient sections, step prefixes", () => {
+    const recipe = parseRecipeHtml(
+      read("coles-style.html"),
+      "https://www.coles.com.au/recipe/cookies"
+    );
+
+    expect(recipe.title).toBe("Chocolate Chip Cookies");
+    expect(recipe.servings).toBe(12);
+    expect(recipe.ingredients).toHaveLength(5);
+    expect(recipe.sections).toEqual([
+      { kind: "ingredients", at: 0, title: "For the dough" },
+      { kind: "ingredients", at: 3, title: "For the icing" },
+    ]);
+    expect(recipe.steps).toEqual([
+      "Preheat the oven to 180°C and line two trays.",
+      "Mix the dough, roll into balls and bake for 12 minutes.",
+    ]);
+  });
+
+  it("treats a mid-list h2 as a section heading, not the end of the list", () => {
+    const html = `
+      <h1>Cake</h1>
+      <h2>Ingredients</h2>
+      <ul><li>200 g butter</li></ul>
+      <h2>For the icing</h2>
+      <ul><li>100 g icing sugar</li><li>1 tbsp milk</li></ul>
+      <h2>Method</h2>
+      <ol><li>Mix the batter and bake until golden.</li></ol>`;
+    const recipe = parseRecipeHtml(html, "https://example.com/cake");
+    expect(recipe.ingredients).toHaveLength(3);
+    expect(recipe.sections).toEqual([
+      { kind: "ingredients", at: 1, title: "For the icing" },
+    ]);
+  });
+
+  it("strips Step 1 style prefixes", () => {    expect(stripStepNumber("Step 1. Preheat the oven.")).toBe("Preheat the oven.");
+    expect(stripStepNumber("step 2: Mix well")).toBe("Mix well");
+    expect(stripStepNumber("3) Bake")).toBe("Bake");
+  });
+
+  it("strips Step N prefixes that have no punctuation", () => {
+    expect(stripStepNumber("Step 2 Mix well")).toBe("Mix well");
+    expect(stripStepNumber("STEP 3: Fold gently")).toBe("Fold gently");
+    expect(stripStepNumber("4 - Bake for 20 minutes")).toBe("Bake for 20 minutes");
+  });
+
+  it("keeps decimal amounts at the start of a step", () => {
+    expect(stripStepNumber("2.5 cups flour into the bowl.")).toBe(
+      "2.5 cups flour into the bowl."
+    );
+    expect(stripStepNumber("1.5 kg beef, cubed")).toBe("1.5 kg beef, cubed");
+    expect(stripStepNumber("2. Preheat the oven.")).toBe("Preheat the oven.");
+  });
+
+  it("groups microdata HowToSection steps under their headings", () => {
+    const html = `
+      <article itemscope itemtype="https://schema.org/Recipe">
+        <h1 itemprop="name">Lemon Cake</h1>
+        <ul>
+          <li itemprop="recipeIngredient">200 g butter</li>
+          <li itemprop="recipeIngredient">200 g sugar</li>
+          <li itemprop="recipeIngredient">3 eggs</li>
+        </ul>
+        <div itemprop="recipeInstructions">
+          <div itemprop="recipeInstructions" itemscope itemtype="https://schema.org/HowToSection">
+            <h3 itemprop="name">For the cake</h3>
+            <div itemprop="itemListElement" itemscope itemtype="https://schema.org/HowToStep">
+              <span itemprop="text">Cream the butter and sugar.</span>
+            </div>
+            <div itemprop="itemListElement" itemscope itemtype="https://schema.org/HowToStep">
+              <span itemprop="text">Bake for 30 minutes.</span>
+            </div>
+          </div>
+          <div itemprop="recipeInstructions" itemscope itemtype="https://schema.org/HowToSection">
+            <h3 itemprop="name">For the icing</h3>
+            <div itemprop="itemListElement" itemscope itemtype="https://schema.org/HowToStep">
+              <span itemprop="text">Mix the icing sugar with lemon juice.</span>
+            </div>
+          </div>
+        </div>
+      </article>`;
+    const recipe = parseRecipeHtml(html, "https://example.com/cake");
+    expect(recipe.steps).toEqual([
+      "Cream the butter and sugar.",
+      "Bake for 30 minutes.",
+      "Mix the icing sugar with lemon juice.",
+    ]);
+    expect(recipe.sections).toEqual([
+      { kind: "steps", at: 0, title: "For the cake" },
+      { kind: "steps", at: 2, title: "For the icing" },
+    ]);
+  });
+
+  it("reads ingredient headings nested inside wrapper elements", () => {
+    const html = `
+      <h1>Cake</h1>
+      <h2>Ingredients</h2>
+      <div class="wrapper">
+        <h3>For the icing</h3>
+        <ul><li>100 g icing sugar</li><li>1 tbsp milk</li><li>1 tsp vanilla</li></ul>
+      </div>
+      <h2>Method</h2>
+      <ol><li>Mix the batter and bake until golden.</li></ol>`;
+    const recipe = parseRecipeHtml(html, "https://example.com/cake");
+    expect(recipe.ingredients).toHaveLength(3);
+    expect(recipe.sections).toEqual([
+      { kind: "ingredients", at: 0, title: "For the icing" },
+    ]);
+  });
+
+  it("reads servings labels regardless of case", () => {
+    for (const label of ["4 servings", "SERVES 4", "SERVINGS 4", "YIELD 4"]) {
+      const html = `
+        <h1>Cake</h1>
+        <p>${label}</p>
+        <h2>Ingredients</h2>
+        <ul><li>200 g butter</li><li>200 g sugar</li><li>3 eggs</li></ul>
+        <h2>Method</h2>
+        <ol><li>Mix and bake for 30 minutes.</li></ol>`;
+      const recipe = parseHeuristic(html, "https://example.com/cake");
+      expect(recipe?.servings, label).toBe(4);
+    }
+  });
+
+  it("rejects a news article that has no recipe", () => {
+    const html = `
+      <article>
+        <h1>Council approves new bike lane</h1>
+        <p>The council voted on Tuesday to approve a new bike lane along the river.</p>
+        <h2>Related</h2>
+        <ul>
+          <li><a href="/a">Bike lane costs</a></li>
+          <li><a href="/b">Traffic changes</a></li>
+          <li><a href="/c">Vote results</a></li>
+        </ul>
+      </article>`;
+    expect(() =>
+      parseRecipeHtml(html, "https://news.example.com/a")
+    ).toThrow(/Could not extract a recipe/);
+  });
+
+  it("ignores measured lists in nav, footer and aside", () => {
+    const html = `
+      <h1>Cake</h1>
+      <main>
+        <h2>Ingredients</h2>
+        <ul><li>200 g butter</li><li>200 g sugar</li><li>3 eggs</li></ul>
+        <h2>Method</h2>
+        <ol><li>Mix and bake for 30 minutes.</li></ol>
+      </main>
+      <aside><h3>Popular</h3><ul><li>2 cups flour pancakes</li><li>1 kg pumpkin soup</li><li>200 g salad</li></ul></aside>
+      <footer><ul><li>1 cup icing sugar</li><li>2 tbsp milk</li><li>3 eggs</li></ul></footer>`;
+    const recipe = parseRecipeHtml(html, "https://example.com/cake");
+    const names = recipe.ingredients.map((i) => i.name).join(" | ");
+    expect(recipe.ingredients).toHaveLength(3);
+    expect(names).not.toMatch(/icing sugar|milk|pancakes|soup|salad/);
+  });
+
+  it("skips a menu-style list of links and keeps the real ingredient list", () => {
+    const html = `
+      <h1>Cake</h1>
+      <h2>Ingredients</h2>
+      <ul>
+        <li><a href="/shop/flour">featured 2 cups flour</a></li>
+        <li><a href="/shop/sugar">featured 1 cup sugar</a></li>
+        <li><a href="/shop/milk">featured 1 cup milk</a></li>
+      </ul>
+      <ul><li>200 g butter</li><li>3 eggs</li><li>1 tsp vanilla</li></ul>
+      <h2>Method</h2>
+      <ol><li>Mix and bake for 30 minutes.</li></ol>`;
+    const recipe = parseRecipeHtml(html, "https://example.com/cake");
+    const names = recipe.ingredients.map((i) => i.name).join(" | ");
+    expect(recipe.ingredients).toHaveLength(3);
+    expect(names).not.toMatch(/featured/);
+  });
+
+  it("requires steps as well as measured ingredients", () => {
+    const html = `
+      <h1>Pancake batter</h1>
+      <h2>Ingredients</h2>
+      <ul><li>2 cups flour</li><li>1 cup milk</li><li>2 eggs</li></ul>`;
+    expect(parseHeuristic(html, "https://example.com/batter")).toBeNull();
+    expect(() =>
+      parseRecipeHtml(html, "https://example.com/batter")
+    ).toThrow(/Could not extract a recipe/);
+  });
+
+  it("accepts a schema.org microdata Recipe page", () => {
+    const html = `
+      <div itemscope itemtype="https://schema.org/Recipe">
+        <h1 itemprop="name">Lemon Cake</h1>
+        <span itemprop="recipeYield">8 servings</span>
+        <img itemprop="image" src="https://example.com/cake.jpg" />
+        <ul>
+          <li itemprop="recipeIngredient">200 g butter</li>
+          <li itemprop="recipeIngredient">200 g sugar</li>
+        </ul>
+        <div itemprop="recipeInstructions">
+          <ol>
+            <li itemprop="text">Cream the butter and sugar.</li>
+            <li itemprop="text">Bake for 30 minutes.</li>
+          </ol>
+        </div>
+      </div>`;
+    const recipe = parseRecipeHtml(html, "https://example.com/cake");
+    expect(recipe.title).toBe("Lemon Cake");
+    expect(recipe.ingredients).toHaveLength(2);
+    expect(recipe.servings).toBe(8);
+    expect(recipe.photoUrl).toBe("https://example.com/cake.jpg");
+    expect(recipe.steps).toContain("Cream the butter and sugar.");
+  });
+
+  it("keeps step group headings from the heuristic", () => {
+    const html = `
+      <h1>Roast chicken</h1>
+      <h2>Ingredients</h2>
+      <ul><li>1 whole chicken</li><li>2 tbsp olive oil</li><li>1 tsp salt</li></ul>
+      <h2>Method</h2>
+      <ol><li>Heat the oven to 200°C and roast for an hour.</li></ol>
+      <h3>For the gravy</h3>
+      <ol><li>Stir the pan juices with flour and stock.</li></ol>`;
+    const recipe = parseRecipeHtml(html, "https://example.com/chicken");
+    expect(recipe.steps).toHaveLength(2);
+    expect(recipe.sections).toEqual([{ kind: "steps", at: 1, title: "For the gravy" }]);
+  });
+
+  it("reads <p>-per-line lists inside wrapper divs", () => {
+    const html = `
+      <h1>Oven baked risotto</h1>
+      <h2>Ingredients</h2>
+      <div class="recipe-card">
+        <p>300 g arborio rice</p>
+        <p>1 litre hot stock</p>
+        <p>50 g parmesan</p>
+      </div>
+      <h2>Method</h2>
+      <div class="recipe-steps">
+        <p>Heat the stock in a saucepan until it simmers.</p>
+        <p>Stir in the rice and cook for 18 minutes, adding stock as needed.</p>
+      </div>
+      <h2>Notes</h2>
+      <p>Serve straight away with extra parmesan on top if you like it cheesy.</p>`;
+    const recipe = parseRecipeHtml(html, "https://example.com/risotto");
+    expect(recipe.ingredients).toHaveLength(3);
+    expect(recipe.ingredients[0]).toMatchObject({ quantity: 300, unit: "g", name: "arborio rice" });
+    expect(recipe.steps).toHaveLength(2);
+    expect(recipe.steps[0]).not.toMatch(/parmesan on top/);
+  });
+
+  it("rejects prose paragraphs under ingredient/method headings", () => {
+    const html = `
+      <h1>Our story</h1>
+      <h2>Ingredients</h2>
+      <div><p>We started in a small kitchen with a big idea.</p><p>Today we sell to shops across the country.</p></div>
+      <h2>Method</h2>
+      <div><p>Everything is made by hand, in small batches, with care.</p><p>We hope you enjoy it as much as we do.</p></div>`;
+    expect(parseHeuristic(html, "https://example.com/about")).toBeNull();
   });
 });
 

@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from "react";
+import { isValidServings, type ServingsValue } from "../lib/recipe-form";
 
-export type ServingsValue = number | "";
+export { isValidServings, type ServingsValue };
 
 interface ServingsInputProps {
   id?: string;
@@ -59,8 +60,4 @@ export function ServingsInput({
       onBlur={() => setFocused(false)}
     />
   );
-}
-
-export function isValidServings(value: ServingsValue, min = 1): value is number {
-  return typeof value === "number" && Number.isFinite(value) && value >= min;
 }

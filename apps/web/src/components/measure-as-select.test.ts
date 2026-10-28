@@ -256,4 +256,39 @@ describe("Measure as… dropdown", () => {
     assert.equal(chestnutG.quantity, 10);
     assert.equal(chestnutG.needsWeight, undefined);
   });
+
+  it("ranks an exact alias name first and pre-selects it", () => {
+    const cases: Array<[string, string]> = [
+      ["water chestnut", "water chestnut"],
+      ["water chestnuts", "water chestnut"],
+      ["scallion", "spring onion"],
+      ["celery root", "celeriac"],
+      ["bell pepper", "capsicum"],
+      ["cilantro", "coriander"],
+      ["shrimp", "prawn"],
+      ["aubergine", "eggplant"],
+      ["courgette", "zucchini"],
+      ["beet", "beetroot"],
+      ["chili", "chilli"],
+    ];
+
+    for (const [typed, kept] of cases) {
+      const options = parseOptions(render(typed));
+      const matches = options.filter((o) => o.group === "Matches");
+      assert.ok(matches.length > 0, typed);
+      assert.equal(matches[0]!.value, kept, typed);
+      assert.equal(matches[0]!.text, COMBINED[kept] ?? kept, typed);
+
+      const selected = options.filter((o) => o.selected);
+      assert.equal(selected.length, 1, typed);
+      assert.equal(selected[0]!.value, kept, typed);
+    }
+
+    const chestnut = parseOptions(render("water chestnut")).filter((o) => o.selected);
+    assert.ok(chestnut.every((o) => o.value !== "water"), "water chestnut selects water");
+
+    const water = parseOptions(render("water")).filter((o) => o.selected);
+    assert.equal(water.length, 1);
+    assert.equal(water[0]!.value, "water");
+  });
 });

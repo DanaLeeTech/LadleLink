@@ -2,7 +2,7 @@ import type { ParsedRecipe } from "@ladlelink/types";
 import { parseJsonLd } from "./jsonld.js";
 import { parseMicrodata } from "./microdata.js";
 import { parseHeuristic } from "./heuristic.js";
-import { cleanRecipeText, parseIngredientLine } from "./ingredient-line.js";
+import { cleanRecipeText, parseIngredientLine, stripStepNumber } from "./ingredient-line.js";
 
 export {
   parseIngredientLine,
@@ -84,8 +84,17 @@ export function parseRecipeHtml(html: string, sourceUrl: string): ParsedRecipe {
     throw new Error("Could not extract ingredients from this page");
   }
   parsed.title = cleanRecipeText(parsed.title);
-  parsed.steps = parsed.steps.map(cleanRecipeText).filter(Boolean);
+  parsed.steps = parsed.steps
+    .map((step) => stripStepNumber(cleanRecipeText(step)))
+    .filter(Boolean);
   if (parsed.notes) parsed.notes = cleanRecipeText(parsed.notes);
+  if (parsed.sections) {
+    const limits = { ingredients: parsed.ingredients.length, steps: parsed.steps.length };
+    parsed.sections = parsed.sections
+      .filter((s) => s.title.trim() && s.at >= 0 && s.at <= limits[s.kind])
+      .map((s) => ({ ...s, title: cleanRecipeText(s.title) }));
+    if (!parsed.sections.length) delete parsed.sections;
+  }
   return parsed;
 }
 

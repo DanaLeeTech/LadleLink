@@ -2,7 +2,7 @@
  * Short aliases that must not match inside a longer compound name.
  * Exact "pepper" is fine; "pepper" ⊂ "black pepper" is not (bell vs spice).
  */
-const EXACT_ONLY_ALIASES = new Set(["pepper", "peppers"]);
+export const EXACT_ONLY_ALIASES = new Set(["pepper", "peppers"]);
 
 /**
  * Score how well an ingredient name matches an alias.

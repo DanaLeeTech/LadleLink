@@ -81,9 +81,11 @@ interface RecipeRow {
   servings: number;
   steps: string;
   ingredients: string;
+  sections: string | null;
   tags: string;
   notes: string | null;
   photo_path: string | null;
+  image_url: string | null;
   source_url: string | null;
   created_at: string;
   updated_at: string;
@@ -96,9 +98,11 @@ function rowToRecipe(row: RecipeRow): Recipe {
     servings: row.servings,
     steps: JSON.parse(row.steps),
     ingredients: JSON.parse(row.ingredients),
+    sections: row.sections ? JSON.parse(row.sections) : undefined,
     tags: JSON.parse(row.tags),
     notes: row.notes,
     photoPath: row.photo_path,
+    imageUrl: row.image_url,
     sourceUrl: row.source_url,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -140,9 +144,11 @@ export class RecipeStore {
       servings: input.servings,
       steps: input.steps,
       ingredients: input.ingredients,
+      sections: input.sections?.length ? input.sections : undefined,
       tags: input.tags ?? [],
       notes: input.notes ?? null,
       photoPath: input.photoPath ?? null,
+      imageUrl: input.imageUrl ?? null,
       sourceUrl: input.sourceUrl ?? null,
       createdAt: now,
       updatedAt: now,
@@ -150,8 +156,8 @@ export class RecipeStore {
     this.db
       .prepare(
         `INSERT INTO recipes
-        (id, title, servings, steps, ingredients, tags, notes, photo_path, source_url, created_at, updated_at)
-        VALUES (@id, @title, @servings, @steps, @ingredients, @tags, @notes, @photo_path, @source_url, @created_at, @updated_at)`
+        (id, title, servings, steps, ingredients, sections, tags, notes, photo_path, image_url, source_url, created_at, updated_at)
+        VALUES (@id, @title, @servings, @steps, @ingredients, @sections, @tags, @notes, @photo_path, @image_url, @source_url, @created_at, @updated_at)`
       )
       .run({
         id: recipe.id,
@@ -159,9 +165,11 @@ export class RecipeStore {
         servings: recipe.servings,
         steps: JSON.stringify(recipe.steps),
         ingredients: JSON.stringify(recipe.ingredients),
+        sections: JSON.stringify(recipe.sections ?? []),
         tags: JSON.stringify(recipe.tags),
         notes: recipe.notes,
         photo_path: recipe.photoPath,
+        image_url: recipe.imageUrl,
         source_url: recipe.sourceUrl,
         created_at: recipe.createdAt,
         updated_at: recipe.updatedAt,
@@ -179,9 +187,11 @@ export class RecipeStore {
       servings: input.servings,
       steps: input.steps,
       ingredients: input.ingredients,
+      sections: input.sections ?? existing.sections,
       tags: input.tags ?? [],
       notes: input.notes ?? null,
       photoPath: input.photoPath !== undefined ? input.photoPath : existing.photoPath,
+      imageUrl: input.imageUrl !== undefined ? input.imageUrl : existing.imageUrl,
       sourceUrl: input.sourceUrl !== undefined ? input.sourceUrl : existing.sourceUrl,
       updatedAt: now,
     };
@@ -192,9 +202,11 @@ export class RecipeStore {
           servings = @servings,
           steps = @steps,
           ingredients = @ingredients,
+          sections = @sections,
           tags = @tags,
           notes = @notes,
           photo_path = @photo_path,
+          image_url = @image_url,
           source_url = @source_url,
           updated_at = @updated_at
         WHERE id = @id`
@@ -205,9 +217,11 @@ export class RecipeStore {
         servings: recipe.servings,
         steps: JSON.stringify(recipe.steps),
         ingredients: JSON.stringify(recipe.ingredients),
+        sections: JSON.stringify(recipe.sections ?? []),
         tags: JSON.stringify(recipe.tags),
         notes: recipe.notes,
         photo_path: recipe.photoPath,
+        image_url: recipe.imageUrl,
         source_url: recipe.sourceUrl,
         updated_at: recipe.updatedAt,
       });
@@ -259,8 +273,8 @@ export class RecipeStore {
           this.db
             .prepare(
               `INSERT INTO recipes
-              (id, title, servings, steps, ingredients, tags, notes, photo_path, source_url, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+              (id, title, servings, steps, ingredients, sections, tags, notes, photo_path, image_url, source_url, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
             )
             .run(
               recipe.id,
@@ -268,9 +282,11 @@ export class RecipeStore {
               recipe.servings,
               JSON.stringify(recipe.steps),
               JSON.stringify(recipe.ingredients),
+              JSON.stringify(recipe.sections ?? []),
               JSON.stringify(recipe.tags ?? []),
               recipe.notes ?? null,
               recipe.photoPath ?? null,
+              recipe.imageUrl ?? null,
               recipe.sourceUrl ?? null,
               recipe.createdAt,
               recipe.updatedAt
@@ -282,9 +298,11 @@ export class RecipeStore {
             servings: recipe.servings,
             steps: recipe.steps,
             ingredients: recipe.ingredients,
+            sections: recipe.sections,
             tags: recipe.tags,
             notes: recipe.notes,
             photoPath: recipe.photoPath,
+            imageUrl: recipe.imageUrl,
             sourceUrl: recipe.sourceUrl,
           });
           // Preserve imported timestamps for LWW fidelity

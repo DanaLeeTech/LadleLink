@@ -15,6 +15,14 @@ const ASCII_FRACTION_RE = /(?<!\d)(1\/8|3\/8|5\/8|7\/8|1\/4|3\/4|1\/3|2\/3|1\/2)
 
 const REPLACEMENTS = new Map(ASCII_TO_UNICODE);
 
+/** Unicode vulgar fraction → decimal value (used when parsing typed quantities). */
+export const UNICODE_FRACTION_VALUES: Record<string, number> = Object.fromEntries(
+  ASCII_TO_UNICODE.map(([ascii, unicode]) => {
+    const [numerator, denominator] = ascii.split("/").map(Number);
+    return [unicode, numerator! / denominator!];
+  })
+);
+
 /**
  * Replace ASCII fractions like `1/4` with `¼`.
  * Returns the new text and an adjusted caret index for the edit that produced `text`.

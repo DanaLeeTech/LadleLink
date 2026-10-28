@@ -1,5 +1,5 @@
 import type { Ingredient } from "@ladlelink/types";
-import { aliasMatchScore } from "./alias-match.js";
+import { aliasMatchScore, EXACT_ONLY_ALIASES } from "./alias-match.js";
 import { PRODUCE_UNITS, unitLabel } from "./catalog.js";
 import { DENSITY_TABLE } from "./density.js";
 import { GENERATED_PIECE_WEIGHTS } from "./generated/piece-weights.generated.js";
@@ -293,7 +293,8 @@ function buildCandidates(): ConversionCandidate[] {
   const byKey = new Map<string, Set<string>>();
 
   function add(key: string, aliases: string[]) {
-    const k = key.trim().toLowerCase();
+    // Key by display label so density/piece/produce rows for one food merge their aliases.
+    const k = formatConversionLabel(key).toLowerCase();
     if (!k) return;
     let set = byKey.get(k);
     if (!set) {
@@ -506,33 +507,71 @@ export function conversionCatalogLabels(): string[] {
 }
 
 /**
+ * alias → catalog labels, built once. Lookups used to rescan the whole catalog and
+ * re-search the candidate list per label on every keypress (O(n²), ~1 s per key at
+ * 4× CPU slowdown); this makes a lookup "check the word spans of the typed name".
+ */
+let MATCH_INDEX: Map<string, string[]> | null = null;
+let MATCH_INDEX_BUILDS = 0;
+
+/** Test hook: proves the index is built once, not per lookup. */
+export function conversionMatchIndexBuildCount(): number {
+  return MATCH_INDEX_BUILDS;
+}
+
+function matchIndex(): Map<string, string[]> {
+  if (MATCH_INDEX) return MATCH_INDEX;
+  MATCH_INDEX_BUILDS += 1;
+
+  const candidatesByLabel = new Map<string, ConversionCandidate>();
+  for (const candidate of candidates()) {
+    candidatesByLabel.set(formatConversionLabel(candidate.key), candidate);
+  }
+
+  const index = new Map<string, string[]>();
+  for (const label of conversionCatalogLabels()) {
+    const aliases = new Set<string>(candidatesByLabel.get(label)?.aliases);
+    aliases.add(label);
+    for (const alias of aliases) {
+      const labels = index.get(alias);
+      if (!labels) index.set(alias, [label]);
+      else if (!labels.includes(label)) labels.push(label);
+    }
+  }
+  MATCH_INDEX = index;
+  return index;
+}
+
+/**
  * Catalog labels that loosely match an ingredient name, best first (for Matches group).
  */
 export function matchingConversionLabels(name: string): string[] {
   const normalized = normalizeForInfer(name);
   if (!normalized) return [];
-  const variants = expandNameVariants(normalized);
-  const catalog = conversionCatalogLabels();
-  const scored: { label: string; score: number }[] = [];
+  const index = matchIndex();
+  const best = new Map<string, number>();
 
-  for (const label of catalog) {
-    let best = 0;
-    for (const variant of variants) {
-      best = Math.max(best, aliasMatchScore(variant, label));
-      // Also score against seed aliases for this label
-      const cand = candidates().find((c) => formatConversionLabel(c.key) === label);
-      if (cand) {
-        for (const alias of cand.aliases) {
-          best = Math.max(best, aliasMatchScore(variant, alias));
+  for (const variant of expandNameVariants(normalized)) {
+    const words = variant.split(" ");
+    for (let start = 0; start < words.length; start++) {
+      for (let end = start; end < words.length; end++) {
+        const alias = words.slice(start, end + 1).join(" ");
+        const whole = start === 0 && end === words.length - 1;
+        // Same rule as aliasMatchScore: these only match the name exactly.
+        if (!whole && EXACT_ONLY_ALIASES.has(alias)) continue;
+        const labels = index.get(alias);
+        if (!labels) continue;
+        const score = (whole ? 10_000 : 1_000) + alias.length;
+        for (const label of labels) {
+          if ((best.get(label) ?? 0) < score) best.set(label, score);
         }
       }
     }
-    if (best >= 1000) scored.push({ label, score: best });
   }
 
-  return scored
-    .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
-    .map((s) => s.label);
+  return [...best]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([label]) => label);
 }
 
 function normalizeForInfer(name: string): string {

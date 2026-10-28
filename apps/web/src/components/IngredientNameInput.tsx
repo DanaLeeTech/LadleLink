@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   conversionCatalogLabels,
+  expandNameVariants,
   formatConversionLabel,
   matchingConversionLabels,
   PRODUCE_UNITS,
@@ -427,6 +428,25 @@ export const GROUPED: { group: SuggestionGroup; items: string[] }[] = (() => {
 
 const CATALOG_SET = new Set(GROUPED.flatMap((g) => g.items));
 
+/**
+ * Typed name → kept label for exact hits: regional alternates, hidden duplicates
+ * and kept labels themselves. Used so alias names pre-select the right option.
+ */
+const EXACT_KEPT_BY_NAME: Record<string, string> = (() => {
+  const map: Record<string, string> = {};
+  for (const [kept, combined] of Object.entries(DISPLAY_LABELS)) {
+    const alternate = combined.split("/")[1];
+    if (alternate && !map[alternate]) map[alternate] = kept;
+  }
+  for (const [hidden, kept] of Object.entries(DROPDOWN_ALIASES)) {
+    if (!map[hidden]) map[hidden] = kept;
+  }
+  for (const label of CATALOG_SET) {
+    if (!map[label]) map[label] = label;
+  }
+  return map;
+})();
+
 function normalizeKey(key: string | undefined): string {
   if (!key) return "";
   const formatted = formatConversionLabel(key);
@@ -476,24 +496,52 @@ interface MeasureAsSelectProps {
   onChange: (conversionKey: string | undefined) => void;
 }
 
+/** Typed name → value that settles once the user pauses (150 ms), not on every keypress. */
+function useDebouncedValue<T>(value: T, delayMs = 150): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
+
 /** Conversion-base select: Matches first, then grouped catalog. Empty shows —. */
 export function MeasureAsSelect({ name, conversionKey, onChange }: MeasureAsSelectProps) {
+  const debouncedName = useDebouncedValue(name);
+
+  // Exact alias hit (e.g. "scallion", "water chestnut") wins over fuzzy matches.
+  const exactKept = useMemo(() => {
+    const typed = debouncedName.trim().toLowerCase();
+    if (!typed) return "";
+    for (const variant of expandNameVariants(typed)) {
+      const kept = EXACT_KEPT_BY_NAME[variant];
+      if (kept) return kept;
+    }
+    return "";
+  }, [debouncedName]);
+
   const matches = useMemo(() => {
     const kept: string[] = [];
     const seen = new Set<string>();
-    for (const label of matchingConversionLabels(name)) {
+    if (exactKept) {
+      seen.add(exactKept);
+      kept.push(exactKept);
+    }
+    for (const label of matchingConversionLabels(debouncedName)) {
       const mapped = DROPDOWN_ALIASES[label.toLowerCase()] ?? label;
       if (seen.has(mapped)) continue;
       seen.add(mapped);
       kept.push(mapped);
     }
     return kept;
-  }, [name]);
+  }, [debouncedName, exactKept]);
   const matchSet = useMemo(() => new Set(matches), [matches]);
 
-  // Prefer stored key; else pre-select a confident match (e.g. name is exactly "water")
+  // Prefer stored key; then an exact alias hit; then a confident match.
   const selectValue =
     normalizeKey(conversionKey) ||
+    exactKept ||
     (matches.length === 1 ? matches[0]! : "") ||
     (matches.find((m) => m.toLowerCase() === name.trim().toLowerCase()) ?? "");
 

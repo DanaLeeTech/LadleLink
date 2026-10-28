@@ -58,7 +58,7 @@ export { DENSITY_TABLE, lookupDensity, resolveDensity } from "./density.js";
 export { expandNameVariants, wordForms } from "./name-variants.js";
 export { formatQuantity, roundQuantity } from "./format.js";
 export { formatQuantityRange } from "./format-range.js";
-export { pluralUnitLabel, pluralProduceName } from "./pluralize.js";
+export { pluralUnitLabel, pluralProduceName, singularizeName } from "./pluralize.js";
 export { defaultProduceSize, isProduceIngredient } from "./produce.js";
 export {
   resolvePieceGrams,
@@ -69,6 +69,7 @@ export { GENERATED_DENSITY_TABLE } from "./generated/density.generated.js";
 export {
   conversionCatalogLabels,
   conversionKeyDiffersFromName,
+  conversionMatchIndexBuildCount,
   formatConversionLabel,
   inferConversionKey,
   isSingleIngredientLabel,
@@ -117,6 +118,13 @@ function withRange(
   };
 }
 
+/** Australian spoon/pint sizes. On unless the user picked US measures. */
+export function usesAustralianMeasures(
+  prefs: MeasurementPrefs = DEFAULT_MEASUREMENT_PREFS
+): boolean {
+  return prefs.australianMeasures ?? prefs.cupStandard !== "us";
+}
+
 /**
  * Convert an ingredient quantity to a target unit.
  * Volume↔mass requires known density; countable↔mass uses piece weights.
@@ -126,6 +134,7 @@ export function convertIngredient(
   targetUnit: CanonicalUnit,
   prefs: MeasurementPrefs = DEFAULT_MEASUREMENT_PREFS
 ): ConvertResult {
+  const au = usesAustralianMeasures(prefs);
   const fromUnit = canonicalizeUnit(ingredient.unit);
   const toUnit = canonicalizeUnit(targetUnit);
   const kind = inferKind(ingredient);
@@ -263,7 +272,7 @@ export function convertIngredient(
       }
       const grams = qty * perPiece;
       const ml = grams / densityInfo.densityGPerMl;
-      const converted = mlToVolumeUnit(ml, toUnit, prefs.cupStandard);
+      const converted = mlToVolumeUnit(ml, toUnit, prefs.cupStandard, au);
       if (converted == null) return failKeep(ingredient, kind);
       const rounded = roundQuantity(converted, toUnit);
       return withRange(
@@ -277,7 +286,7 @@ export function convertIngredient(
         (max) => {
           const g = max * perPiece;
           const m = g / densityInfo.densityGPerMl;
-          return mlToVolumeUnit(m, toUnit, prefs.cupStandard);
+          return mlToVolumeUnit(m, toUnit, prefs.cupStandard, au);
         }
       );
     }
@@ -311,7 +320,7 @@ export function convertIngredient(
           needsDensity: true,
         };
       }
-      const ml = volumeUnitToMl(qty, fromUnit, prefs.cupStandard);
+      const ml = volumeUnitToMl(qty, fromUnit, prefs.cupStandard, au);
       if (ml == null) return failKeep(ingredient, kind);
       const grams = ml * densityInfo.densityGPerMl;
       const pieces = grams / per;
@@ -325,7 +334,7 @@ export function convertIngredient(
         },
         qtyMax,
         (max) => {
-          const m = volumeUnitToMl(max, fromUnit, prefs.cupStandard);
+          const m = volumeUnitToMl(max, fromUnit, prefs.cupStandard, au);
           if (m == null) return null;
           return (m * densityInfo.densityGPerMl) / per;
         }
@@ -342,9 +351,9 @@ export function convertIngredient(
   }
 
   if (fromFamily === "volume" && toFamily === "volume") {
-    const ml = volumeUnitToMl(qty, fromUnit, prefs.cupStandard);
+    const ml = volumeUnitToMl(qty, fromUnit, prefs.cupStandard, au);
     if (ml == null) return failKeep(ingredient, kind);
-    const converted = mlToVolumeUnit(ml, toUnit, prefs.cupStandard);
+    const converted = mlToVolumeUnit(ml, toUnit, prefs.cupStandard, au);
     if (converted == null) return failKeep(ingredient, kind);
     const rounded = roundQuantity(converted, toUnit);
     return withRange(
@@ -356,9 +365,9 @@ export function convertIngredient(
       },
       qtyMax,
       (max) => {
-        const m = volumeUnitToMl(max, fromUnit, prefs.cupStandard);
+        const m = volumeUnitToMl(max, fromUnit, prefs.cupStandard, au);
         if (m == null) return null;
-        return mlToVolumeUnit(m, toUnit, prefs.cupStandard);
+        return mlToVolumeUnit(m, toUnit, prefs.cupStandard, au);
       }
     );
   }
@@ -402,7 +411,7 @@ export function convertIngredient(
   const d = densityInfo.densityGPerMl;
 
   if (fromFamily === "volume" && toFamily === "mass") {
-    const ml = volumeUnitToMl(qty, fromUnit, prefs.cupStandard);
+    const ml = volumeUnitToMl(qty, fromUnit, prefs.cupStandard, au);
     if (ml == null) return failKeep(ingredient, kind);
     const grams = ml * d;
     const converted = gramsToMassUnit(grams, toUnit);
@@ -417,7 +426,7 @@ export function convertIngredient(
       },
       qtyMax,
       (max) => {
-        const m = volumeUnitToMl(max, fromUnit, prefs.cupStandard);
+        const m = volumeUnitToMl(max, fromUnit, prefs.cupStandard, au);
         if (m == null) return null;
         return gramsToMassUnit(m * d, toUnit);
       }
@@ -428,7 +437,7 @@ export function convertIngredient(
     const grams = massUnitToGrams(qty, fromUnit);
     if (grams == null) return failKeep(ingredient, kind);
     const ml = grams / d;
-    const converted = mlToVolumeUnit(ml, toUnit, prefs.cupStandard);
+    const converted = mlToVolumeUnit(ml, toUnit, prefs.cupStandard, au);
     if (converted == null) return failKeep(ingredient, kind);
     const rounded = roundQuantity(converted, toUnit);
     return withRange(
@@ -442,7 +451,7 @@ export function convertIngredient(
       (max) => {
         const g = massUnitToGrams(max, fromUnit);
         if (g == null) return null;
-        return mlToVolumeUnit(g / d, toUnit, prefs.cupStandard);
+        return mlToVolumeUnit(g / d, toUnit, prefs.cupStandard, au);
       }
     );
   }

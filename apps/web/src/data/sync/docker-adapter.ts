@@ -11,7 +11,7 @@ function normalizeBase(baseUrl: string): string {
 async function nativeOrFetch(
   baseUrl: string,
   path: string,
-  options: { method?: string; body?: unknown; token?: string } = {}
+  options: { method?: string; body?: unknown; token?: string; signal?: AbortSignal } = {}
 ): Promise<unknown> {
   const url = `${normalizeBase(baseUrl)}${path}`;
   const headers: Record<string, string> = {};
@@ -42,6 +42,7 @@ async function nativeOrFetch(
         method: options.method,
         body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
         token: options.token,
+        signal: options.signal,
       });
     }
     throw err;
@@ -107,12 +108,15 @@ export async function dockerPushMeasurement(
 
 export async function dockerImportFromUrl(
   cfg: DockerConfig,
-  url: string
+  url: string,
+  signal?: AbortSignal
 ): Promise<unknown> {
+  if (signal?.aborted) throw new Error("Import cancelled");
   return nativeOrFetch(cfg.baseUrl, "/api/recipes/import", {
     method: "POST",
     body: { url },
     token: cfg.authToken || undefined,
+    signal,
   });
 }
 

@@ -71,7 +71,20 @@ export function ListPage() {
 
       {!loading && recipes.length === 0 && (
         <div className="empty">
-          <p>No recipes yet. Import one from a URL or paste, or add one by hand.</p>
+          {trimmedQ ? (
+            <>
+              <p>No recipes match “{trimmedQ}”.</p>
+              <button
+                className="btn secondary"
+                type="button"
+                onClick={() => setQ("")}
+              >
+                Clear search
+              </button>
+            </>
+          ) : (
+            <p>No recipes yet. Import one from a URL or paste, or add one by hand.</p>
+          )}
         </div>
       )}
 

@@ -124,6 +124,7 @@ export async function listLocalRecipes(q?: string): Promise<Recipe[]> {
       (r) =>
         r.title.toLowerCase().includes(needle) ||
         r.tags.some((t) => t.toLowerCase().includes(needle)) ||
+        r.ingredients.some((i) => i.name.toLowerCase().includes(needle)) ||
         (r.notes || "").toLowerCase().includes(needle)
     );
   }

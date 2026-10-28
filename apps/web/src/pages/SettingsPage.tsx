@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import type { MeasurementPrefs } from "@ladlelink/types";
+import type { CupStandard, MeasurementPrefs } from "@ladlelink/types";
 import { DEFAULT_MEASUREMENT_PREFS } from "@ladlelink/types";
+import { usesAustralianMeasures } from "@ladlelink/units";
 import { useAuth } from "../api";
 import { isDemoMode } from "../data/demo";
 import { resetDemoData } from "../data/demo-repository";
 import { useRepository } from "../data/RepositoryProvider";
+import { importSummary, parseBackupPayload } from "../data/recipe-validation";
 import type { DataSourceMode, SyncStatus } from "../data/repository";
 
 export function SettingsPage() {
@@ -72,11 +74,14 @@ export function SettingsPage() {
 
   async function onImportFile(file: File) {
     setError(null);
+    setMessage(null);
     try {
       const text = await file.text();
-      const payload = JSON.parse(text);
+      const payload = parseBackupPayload(text);
       const result = await repo.importAll(payload);
-      setMessage(`Imported ${result.imported} recipes.`);
+      const summary = importSummary(result);
+      if (summary.ok) setMessage(summary.message);
+      else setError(summary.message);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Import failed");
     }
@@ -277,13 +282,40 @@ export function SettingsPage() {
           <select
             id="cupStandard"
             value={prefs.cupStandard}
-            onChange={(e) =>
-              setPrefs({ ...prefs, cupStandard: e.target.value as MeasurementPrefs["cupStandard"] })
-            }
+            onChange={(e) => {
+              const cupStandard = e.target.value as CupStandard;
+              setPrefs({
+                ...prefs,
+                cupStandard,
+                australianMeasures: cupStandard === "metric",
+              });
+            }}
           >
             <option value="metric">Metric (250 ml)</option>
             <option value="us">US (240 ml)</option>
           </select>
+        </div>
+
+        <div className="field">
+          <label htmlFor="australianMeasures">
+            <input
+              id="australianMeasures"
+              type="checkbox"
+              checked={usesAustralianMeasures(prefs)}
+              onChange={(e) =>
+                setPrefs({
+                  ...prefs,
+                  australianMeasures: e.target.checked,
+                  cupStandard: e.target.checked ? "metric" : "us",
+                })
+              }
+            />{" "}
+            Australian measures
+          </label>
+          <p className="meta">
+            On: 20 ml tbsp, 5 ml tsp, 250 ml cup, imperial pints and quarts. Off: US
+            measures (14.8 ml tbsp, 240 ml cup).
+          </p>
         </div>
 
         <div className="field">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { parseRecipeText } from "@ladlelink/parser";
 import type { Ingredient, ParsedRecipe } from "@ladlelink/types";
@@ -22,6 +22,7 @@ import {
   patchFromMeasureSelect,
 } from "../lib/ingredient-ui";
 import { importRecipeFromImage } from "../lib/recipe-card-import";
+import { recipeInputFromDraft } from "../lib/import-draft";
 
 const emptyIngredient = (): Ingredient => ({
   quantity: 0,
@@ -46,6 +47,9 @@ export function ImportPage() {
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [importHint, setImportHint] = useState<string | null>(null);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const [pendingSourceUrl, setPendingSourceUrl] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   function applyDraft(parsed: ParsedRecipe) {
     const ingredients = parsed.ingredients.length
@@ -55,40 +59,46 @@ export function ImportPage() {
     setStepsText(formatStepsForEditor(parsed.steps));
   }
 
+  async function runUrlImport(target: string) {
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setLoading(true);
+    setError(null);
+    setDraft(null);
+    setFailedUrl(null);
+    try {
+      const parsed = await repo.importFromUrl(target, {
+        signal: controller.signal,
+        onProgress: setLoadingMessage,
+      });
+      if (controller.signal.aborted) return;
+      applyDraft(parsed);
+    } catch (err) {
+      if (controller.signal.aborted) {
+        setError("Import cancelled.");
+      } else {
+        setError(err instanceof Error ? err.message : "Import failed");
+        setFailedUrl(target);
+      }
+    } finally {
+      abortRef.current = null;
+      setLoading(false);
+      setLoadingMessage(null);
+    }
+  }
+
   useEffect(() => {
     const shared = searchParams.get("url");
     if (shared) {
       setMode("url");
       setUrl(shared);
-      void (async () => {
-        setLoading(true);
-        setError(null);
-        setDraft(null);
-        try {
-          const parsed = await repo.importFromUrl(shared.trim());
-          applyDraft(parsed);
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "Import failed");
-        } finally {
-          setLoading(false);
-        }
-      })();
+      void runUrlImport(shared.trim());
     }
   }, [searchParams, repo]);
 
-  async function onFetch(e: React.FormEvent) {
+  function onFetch(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setDraft(null);
-    try {
-      const parsed = await repo.importFromUrl(url.trim());
-      applyDraft(parsed);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Import failed");
-    } finally {
-      setLoading(false);
-    }
+    void runUrlImport(url.trim());
   }
 
   function onParseText(e: React.FormEvent) {
@@ -100,7 +110,8 @@ export function ImportPage() {
     setDraft(null);
     try {
       const parsed = parseRecipeText(pasteText);
-      applyDraft(parsed);
+      applyDraft({ ...parsed, sourceUrl: parsed.sourceUrl || pendingSourceUrl || "" });
+      setPendingSourceUrl(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Import failed");
     } finally {
@@ -173,6 +184,19 @@ export function ImportPage() {
     });
   }
 
+  function removeIngredient(index: number) {
+    if (!draft) return;
+    setDraft({
+      ...draft,
+      ingredients: draft.ingredients.filter((_, i) => i !== index),
+      sections: draft.sections
+        ?.map((s) =>
+          s.kind === "ingredients" && s.at > index ? { ...s, at: s.at - 1 } : s
+        )
+        .filter((s) => !(s.kind === "ingredients" && s.at === index)),
+    });
+  }
+
   async function onSave() {
     if (!draft) return;
     if (!isValidServings(draft.servings)) {
@@ -185,15 +209,10 @@ export function ImportPage() {
       const ingredients = draft.ingredients.filter(
         (ing) => ing.name.trim() || ing.quantity
       );
-      const recipe = await repo.createRecipe({
-        title: draft.title,
-        servings: draft.servings,
-        ingredients,
-        steps: parseStepsFromEditor(stepsText),
-        tags: draft.tags ?? [],
-        notes: draft.notes ?? null,
-        sourceUrl: draft.sourceUrl || null,
-      });
+      const steps = parseStepsFromEditor(stepsText);
+      const recipe = await repo.createRecipe(
+        recipeInputFromDraft({ ...draft, servings: draft.servings }, ingredients, steps)
+      );
       navigate(`/recipes/${recipe.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
@@ -250,8 +269,22 @@ export function ImportPage() {
             required
           />
           <button className="btn" type="submit" disabled={loading}>
-            {loading ? "Fetching…" : "Fetch recipe"}
+            {loading ? loadingMessage || "Fetching…" : "Fetch recipe"}
           </button>
+          {loading && (
+            <button
+              className="btn secondary"
+              type="button"
+              onClick={() => {
+                abortRef.current?.abort();
+                setLoading(false);
+                setLoadingMessage(null);
+                setError("Import cancelled.");
+              }}
+            >
+              Cancel
+            </button>
+          )}
         </form>
       ) : mode === "text" ? (
         <form className="form-grid" onSubmit={onParseText}>
@@ -297,10 +330,30 @@ export function ImportPage() {
       )}
 
       {error && <p className="error">{error}</p>}
+      {error && failedUrl && mode === "url" && (
+        <button
+          className="btn secondary"
+          type="button"
+          onClick={() => {
+            setPendingSourceUrl(failedUrl);
+            setFailedUrl(null);
+            setMode("text");
+          }}
+        >
+          Paste the recipe text instead
+        </button>
+      )}
       {importHint && !error && <p className="success">{importHint}</p>}
 
       {draft && (
         <div className="form-grid">
+          {draft.photoUrl && (
+            <img
+              src={draft.photoUrl}
+              alt=""
+              style={{ maxWidth: "16rem", borderRadius: "0.75rem" }}
+            />
+          )}
           <div className="field">
             <label htmlFor="title">Title</label>
             <input
@@ -330,6 +383,13 @@ export function ImportPage() {
           <ul className="ingredient-list">
             {draft.ingredients.map((ing, i) => (
               <li key={i}>
+                {draft.sections
+                  ?.filter((s) => s.kind === "ingredients" && s.at === i)
+                  .map((s) => (
+                    <h3 key={s.title} className="section-label">
+                      {s.title}
+                    </h3>
+                  ))}
                 <div className="ingredient-main ingredient-review-row">
                   <QuantityInput
                     quantity={ing.quantity}
@@ -359,12 +419,7 @@ export function ImportPage() {
                   <button
                     type="button"
                     className="btn secondary icon-btn"
-                    onClick={() =>
-                      setDraft({
-                        ...draft,
-                        ingredients: draft.ingredients.filter((_, idx) => idx !== i),
-                      })
-                    }
+                    onClick={() => removeIngredient(i)}
                     disabled={draft.ingredients.length === 1}
                     aria-label="Remove ingredient"
                     title="Remove ingredient"

@@ -83,10 +83,76 @@ export function utilRouter(store: RecipeStore): Router {
       res.status(400).json({ error: "Invalid export payload" });
       return;
     }
+    // Same rules as the browser import: skip rows that would render a blank page.
+    const sanitized = payload.recipes.map((value: unknown) => sanitizeImportedRecipe(value));
+    const recipes = sanitized.filter((recipe: Recipe | null): recipe is Recipe => recipe !== null);
+    const reasons = sanitized.flatMap((recipe: Recipe | null, index: number) =>
+      recipe ? [] : [`Skipped #${index + 1}: missing or invalid fields.`]
+    );
     const mode = req.query.mode === "replace" ? "replace" : "merge";
-    const result = store.importAll(payload, mode);
-    res.json(result);
+    // Never wipe the library for a file with nothing importable in it.
+    const result =
+      mode === "replace" && !recipes.length
+        ? { imported: 0 }
+        : store.importAll({ ...payload, recipes }, mode);
+    res.json({ ...result, skipped: reasons.length, reasons });
   });
 
   return router;
+}
+
+/** Required fields, non-blank title and ingredient names, and something to render. */
+function isImportableRecipe(value: unknown): value is Recipe {
+  if (typeof value !== "object" || value === null) return false;
+  const r = value as Partial<Recipe>;
+  return (
+    typeof r.id === "string" &&
+    r.id.trim() !== "" &&
+    typeof r.title === "string" &&
+    r.title.trim() !== "" &&
+    typeof r.servings === "number" &&
+    Number.isFinite(r.servings) &&
+    r.servings > 0 &&
+    typeof r.createdAt === "string" &&
+    typeof r.updatedAt === "string" &&
+    Array.isArray(r.steps) &&
+    r.steps.length > 0 &&
+    r.steps.every((step) => typeof step === "string") &&
+    Array.isArray(r.ingredients) &&
+    r.ingredients.length > 0 &&
+    r.ingredients.every(
+      (ingredient) =>
+        typeof ingredient === "object" &&
+        ingredient !== null &&
+        typeof ingredient.quantity === "number" &&
+        Number.isFinite(ingredient.quantity) &&
+        typeof ingredient.name === "string" &&
+        ingredient.name.trim() !== "" &&
+        typeof ingredient.unit === "string"
+    )
+  );
+}
+
+const OPTIONAL_TEXT_FIELDS = ["notes", "photoPath", "imageUrl", "sourceUrl"] as const;
+
+/**
+ * Same as the browser import: drop junk optional fields rather than storing them.
+ * Required fields stay untouched so isImportableRecipe decides validity.
+ */
+function sanitizeImportedRecipe(value: unknown): Recipe | null {
+  if (!isImportableRecipe(value)) return null;
+  const recipe: Recipe = {
+    ...value,
+    tags: Array.isArray(value.tags)
+      ? value.tags.filter((tag: unknown) => typeof tag === "string")
+      : [],
+  };
+  if (!Array.isArray(value.sections)) delete recipe.sections;
+  for (const field of OPTIONAL_TEXT_FIELDS) {
+    const fieldValue = recipe[field];
+    if (fieldValue !== undefined && fieldValue !== null && typeof fieldValue !== "string") {
+      delete recipe[field];
+    }
+  }
+  return recipe;
 }

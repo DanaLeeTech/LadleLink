@@ -144,15 +144,26 @@ export interface Ingredient {
   displayUnit?: CanonicalUnit;
 }
 
+/** A heading row ("For the icing") that appears before a list row. */
+export interface RecipeSection {
+  kind: "ingredients" | "steps";
+  /** Index in that list of the row the heading appears before. */
+  at: number;
+  title: string;
+}
+
 export interface Recipe {
   id: string;
   title: string;
   servings: number;
   steps: string[];
   ingredients: Ingredient[];
+  sections?: RecipeSection[];
   tags: string[];
   notes?: string | null;
   photoPath?: string | null;
+  /** Remote image address from the imported page (photoPath is a local uploaded file). */
+  imageUrl?: string | null;
   sourceUrl?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -163,9 +174,11 @@ export interface RecipeInput {
   servings: number;
   steps: string[];
   ingredients: Ingredient[];
+  sections?: RecipeSection[];
   tags?: string[];
   notes?: string | null;
   photoPath?: string | null;
+  imageUrl?: string | null;
   sourceUrl?: string | null;
 }
 
@@ -174,6 +187,7 @@ export interface ParsedRecipe {
   servings: number;
   steps: string[];
   ingredients: Ingredient[];
+  sections?: RecipeSection[];
   tags?: string[];
   notes?: string | null;
   photoUrl?: string | null;
@@ -182,6 +196,11 @@ export interface ParsedRecipe {
 
 export interface MeasurementPrefs {
   cupStandard: CupStandard;
+  /**
+   * Australian measures: 20 ml tbsp, 5 ml tsp, 250 ml cup, imperial pint/quart.
+   * On by default whenever cups are metric; off means US customary spoons/pints.
+   */
+  australianMeasures?: boolean;
   dryPreferredUnit: CanonicalUnit;
   wetPreferredUnit: CanonicalUnit;
   massSystem: MassSystem;

@@ -1,12 +1,13 @@
 import type { CupStandard } from "@ladlelink/types";
 import { COUNTABLE_UNIT_SET, UNIT_ALIASES } from "./catalog.js";
 
-/** Milliliters per cup for each locale. */
-export function mlPerCup(standard: CupStandard): number {
+/** Milliliters per cup for each locale. Australian measures are always metric. */
+export function mlPerCup(standard: CupStandard, australian = false): number {
+  if (australian) return 250;
   return standard === "us" ? 240 : 250;
 }
 
-/** US customary tsp/tbsp in ml (same for both locales; cups differ). */
+/** US customary volume sizes (used when Australian measures are off). */
 export const ML_PER_TSP = 4.92892159375;
 export const ML_PER_TBSP = 14.78676478125;
 export const ML_PER_FL_OZ = 29.5735295625;
@@ -14,6 +15,13 @@ export const ML_PER_DESSERTSPOON = 10;
 export const ML_PER_PINT = 473.176473;
 export const ML_PER_QUART = 946.352946;
 export const ML_PER_GALLON = 3785.411784;
+
+/** Australian metric spoons, and imperial pints/quarts/gallons. */
+export const AU_ML_PER_TSP = 5;
+export const AU_ML_PER_TBSP = 20;
+export const IMPERIAL_ML_PER_PINT = 568.26125;
+export const IMPERIAL_ML_PER_QUART = 1136.5225;
+export const IMPERIAL_ML_PER_GALLON = 4546.09;
 
 export function normalizeUnitToken(unit: string): string {
   return unit
@@ -32,66 +40,58 @@ export function canonicalizeUnit(unit: string): string {
   return UNIT_ALIASES[u] ?? u;
 }
 
-export function volumeUnitToMl(
-  quantity: number,
+/** Milliliters in one of `unit`, or null when it is not a volume unit. */
+function mlPerVolumeUnit(
   unit: string,
-  cupStandard: CupStandard
+  cupStandard: CupStandard,
+  australian: boolean
 ): number | null {
   switch (canonicalizeUnit(unit)) {
     case "ml":
-      return quantity;
+      return 1;
     case "l":
-      return quantity * 1000;
+      return 1000;
     case "tsp":
-      return quantity * ML_PER_TSP;
+      return australian ? AU_ML_PER_TSP : ML_PER_TSP;
     case "tbsp":
-      return quantity * ML_PER_TBSP;
+      return australian ? AU_ML_PER_TBSP : ML_PER_TBSP;
     case "dessertspoon":
-      return quantity * ML_PER_DESSERTSPOON;
+      return ML_PER_DESSERTSPOON;
     case "fl_oz":
-      return quantity * ML_PER_FL_OZ;
+      // Australian recipes use millilitres instead; fl oz stays US customary.
+      return ML_PER_FL_OZ;
     case "cup":
-      return quantity * mlPerCup(cupStandard);
+      return mlPerCup(cupStandard, australian);
+    // Australian pints and quarts are imperial (20 and 40 imperial fl oz).
     case "pint":
-      return quantity * ML_PER_PINT;
+      return australian ? IMPERIAL_ML_PER_PINT : ML_PER_PINT;
     case "quart":
-      return quantity * ML_PER_QUART;
+      return australian ? IMPERIAL_ML_PER_QUART : ML_PER_QUART;
     case "gallon":
-      return quantity * ML_PER_GALLON;
+      return australian ? IMPERIAL_ML_PER_GALLON : ML_PER_GALLON;
     default:
       return null;
   }
 }
 
+export function volumeUnitToMl(
+  quantity: number,
+  unit: string,
+  cupStandard: CupStandard,
+  australian = false
+): number | null {
+  const factor = mlPerVolumeUnit(unit, cupStandard, australian);
+  return factor == null ? null : quantity * factor;
+}
+
 export function mlToVolumeUnit(
   ml: number,
   unit: string,
-  cupStandard: CupStandard
+  cupStandard: CupStandard,
+  australian = false
 ): number | null {
-  switch (canonicalizeUnit(unit)) {
-    case "ml":
-      return ml;
-    case "l":
-      return ml / 1000;
-    case "tsp":
-      return ml / ML_PER_TSP;
-    case "tbsp":
-      return ml / ML_PER_TBSP;
-    case "dessertspoon":
-      return ml / ML_PER_DESSERTSPOON;
-    case "fl_oz":
-      return ml / ML_PER_FL_OZ;
-    case "cup":
-      return ml / mlPerCup(cupStandard);
-    case "pint":
-      return ml / ML_PER_PINT;
-    case "quart":
-      return ml / ML_PER_QUART;
-    case "gallon":
-      return ml / ML_PER_GALLON;
-    default:
-      return null;
-  }
+  const factor = mlPerVolumeUnit(unit, cupStandard, australian);
+  return factor == null ? null : ml / factor;
 }
 
 export function massUnitToGrams(quantity: number, unit: string): number | null {

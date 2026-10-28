@@ -66,8 +66,9 @@ const IRREGULAR_PRODUCE: Record<string, string> = {
   squash: "squash",
 };
 
+/** Fractions below one take the singular ("½ cup", "½ egg"); 1½ is plural. */
 function isPluralQuantity(quantity: number): boolean {
-  return Number.isFinite(quantity) && Math.abs(quantity - 1) > 1e-9;
+  return Number.isFinite(quantity) && quantity > 1 + 1e-9;
 }
 
 function defaultPlural(word: string): string {
@@ -103,4 +104,31 @@ export function pluralProduceName(name: string, quantity: number): string {
   if (IRREGULAR_PRODUCE[key]) return IRREGULAR_PRODUCE[key];
   if (PRODUCE_UNIT_SET.has(key)) return defaultPlural(trimmed.toLowerCase());
   return trimmed;
+}
+
+/**
+ * Singular for the last word of a name: "diced tomatoes" → "diced tomato".
+ * Unchanged for mass nouns ("hummus", "asparagus") and already-singular names.
+ */
+export function singularizeName(name: string): string {
+  const trimmed = name.trim();
+  const parts = trimmed.split(" ");
+  const last = parts[parts.length - 1] ?? "";
+  // -ss / -us / -is / -ous are not plurals of anything we want to shorten.
+  if (!last || /(?:ss|us|is|ous)$/i.test(last)) return trimmed;
+  const singular = singularWord(last);
+  if (!singular) return trimmed;
+  parts[parts.length - 1] = singular;
+  return parts.join(" ");
+}
+
+function singularWord(word: string): string | null {
+  const lower = word.toLowerCase();
+  const irregular = Object.entries(IRREGULAR_PRODUCE).find(([, plural]) => plural === lower);
+  if (irregular) return irregular[0].replace(/_/g, " ");
+  if (/(?:ch|sh|x|z|ss)es$/i.test(lower)) return word.slice(0, -2);
+  if (/[^aeiou]ies$/i.test(lower)) return `${word.slice(0, -3)}y`;
+  if (/oes$/i.test(lower)) return word.slice(0, -2);
+  if (/s$/i.test(lower) && lower.length > 3) return word.slice(0, -1);
+  return null;
 }

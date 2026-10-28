@@ -38,17 +38,36 @@ export interface SyncResult {
   pulled: number;
 }
 
+export interface ImportUrlOptions {
+  /** Abort the in-flight import (demo readers, native fetch, and Docker request). */
+  signal?: AbortSignal;
+  onProgress?: (message: string) => void;
+}
+
+export interface ImportResult {
+  imported: number;
+  /** Recipes in the file that failed validation and were not saved (demo import). */
+  skipped?: number;
+  /** One plain-English line per skipped recipe. */
+  reasons?: string[];
+}
+
+/** Both the API and the browser stores report a missing recipe id with this message. */
+export function isNotFound(err: unknown): boolean {
+  return err instanceof Error && /not found/i.test(err.message);
+}
+
 export interface RecipeRepository {
   listRecipes(q?: string): Promise<Recipe[]>;
   getRecipe(id: string): Promise<Recipe>;
   createRecipe(input: RecipeInput): Promise<Recipe>;
   updateRecipe(id: string, input: RecipeInput): Promise<Recipe>;
   deleteRecipe(id: string): Promise<void>;
-  importFromUrl(url: string): Promise<ParsedRecipe>;
+  importFromUrl(url: string, options?: ImportUrlOptions): Promise<ParsedRecipe>;
   getMeasurementPrefs(): Promise<MeasurementPrefs>;
   setMeasurementPrefs(prefs: MeasurementPrefs): Promise<MeasurementPrefs>;
   exportAll(): Promise<ExportPayload>;
-  importAll(payload: ExportPayload): Promise<{ imported: number }>;
+  importAll(payload: ExportPayload): Promise<ImportResult>;
 
   isNative(): boolean;
   getMode(): Promise<DataSourceMode>;

@@ -113,4 +113,20 @@ describe("scaleRecipeIngredients", () => {
     expect(cups[0].needsDensity).toBeUndefined();
     expect(cups[0].quantity).toBeGreaterThan(1);
   });
+
+  it("scales with Australian tablespoons by default and US when turned off", () => {
+    const oil: Ingredient[] = [{ quantity: 1, unit: "tbsp", name: "olive oil" }];
+
+    const au = scaleRecipeIngredients(oil, 2, 4, {
+      prefs: DEFAULT_MEASUREMENT_PREFS,
+      unitOverrides: { 0: "ml" },
+    });
+    expect(au[0].quantity).toBe(40);
+
+    const us = scaleRecipeIngredients(oil, 2, 4, {
+      prefs: { ...DEFAULT_MEASUREMENT_PREFS, cupStandard: "us", australianMeasures: false },
+      unitOverrides: { 0: "ml" },
+    });
+    expect(us[0].quantity).toBe(29.6);
+  });
 });

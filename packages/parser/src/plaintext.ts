@@ -10,6 +10,8 @@ import {
 const INGREDIENTS_HEADER = /^ingredients?(?:\s+list)?\b[:\s\-–—]*$/i;
 /** "Instructions", "Method:", "Directions", "Steps", etc. */
 const STEPS_HEADER = /^(instructions?|directions?|method|steps?)\b[:\s\-–—]*$/i;
+/** Markdown heading: "## Method" → "Method"; ATX closing hashes are dropped. */
+const MD_HEADING = /^\s*#{1,6}\s+(.+?)(?:\s+#+)?\s*$/;
 const METADATA_LINE =
   /^(prep(?:\s*time)?|bake(?:\s*time)?|cook(?:\s*time)?|total(?:\s*time)?|temperature|temp|servings?|serves|yield|makes)\b/i;
 const SERVINGS_LINE = /^(servings?|serves|yield|makes)\b/i;
@@ -58,7 +60,9 @@ export function repairOcrLine(line: string): string {
 }
 
 function normalizeLine(raw: string): string {
-  return cleanRecipeText(repairOcrLine(raw.replace(BULLET_PREFIX, "")));
+  return cleanRecipeText(
+    repairOcrLine(raw.replace(MD_HEADING, "$1").replace(BULLET_PREFIX, ""))
+  );
 }
 
 function isBlank(line: string): boolean {
@@ -78,8 +82,11 @@ export function isWeakTitleCandidate(line: string): boolean {
   return false;
 }
 
-/** Drop hashtags, @handles, URLs, IG chrome, pricing chatter, OCR junk. */
-export function isNoiseLine(line: string): boolean {
+/**
+ * Drop hashtags, @handles, URLs, IG chrome, pricing chatter, OCR junk.
+ * `fromHeading` skips the lone-username rule: "# Brownies" is a title, not a handle.
+ */
+export function isNoiseLine(line: string, fromHeading = false): boolean {
   const t = line.trim();
   if (!t) return true;
   if (HASHTAG_OR_HANDLE_LINE.test(t)) return true;
@@ -89,7 +96,7 @@ export function isNoiseLine(line: string): boolean {
   if (/^\d{1,2}:\d{2}\b/.test(t)) return true;
   if (/^#[\w.\s#]+$/.test(t) && t.includes("#")) return true;
   // Lone Instagram-style username
-  if (/^[a-z0-9._]{3,30}$/i.test(t) && !LEADING_QTY.test(t)) {
+  if (!fromHeading && /^[a-z0-9._]{3,30}$/i.test(t) && !LEADING_QTY.test(t)) {
     if (!/\b(?:cup|tsp|tbsp|ball|balls|mix|bake|recipe|flour|milk|egg|oat|oats)\b/i.test(t)) {
       return true;
     }
@@ -241,6 +248,20 @@ export function parseRecipeText(text: string): ParsedRecipe {
   const rawLines = text.replace(/\r\n?/g, "\n").split("\n");
   const lines = rawLines.map(normalizeLine);
 
+  // A Markdown heading ("# Chilli Prawns") names the recipe ahead of intro prose.
+  const headingTitle = rawLines
+    .map((raw) => MD_HEADING.exec(raw)?.[1])
+    .map((raw) => (raw ? cleanRecipeText(repairOcrLine(raw)) : raw))
+    .find(
+      (candidate): candidate is string =>
+        !!candidate &&
+        !INGREDIENTS_HEADER.test(candidate) &&
+        !STEPS_HEADER.test(candidate) &&
+        !METADATA_LINE.test(candidate) &&
+        !isNoiseLine(candidate, true) &&
+        !isWeakTitleCandidate(candidate)
+    );
+
   let ingredientsIdx = -1;
   let stepsIdx = -1;
   for (let i = 0; i < lines.length; i++) {
@@ -366,7 +387,7 @@ export function parseRecipeText(text: string): ParsedRecipe {
   }
 
   // Strip trailing OCR/social crumbs on titles ("… $5! @ #4")
-  const cleanedTitle = (title || "Untitled recipe")
+  const cleanedTitle = (headingTitle || title || "Untitled recipe")
     .replace(/\s*[@#][\s#\d!?.]*$/g, "")
     .trim();
 
