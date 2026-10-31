@@ -74,11 +74,7 @@ export function ListPage() {
           {trimmedQ ? (
             <>
               <p>No recipes match “{trimmedQ}”.</p>
-              <button
-                className="btn secondary"
-                type="button"
-                onClick={() => setQ("")}
-              >
+              <button className="btn secondary" type="button" onClick={() => setQ("")}>
                 Clear search
               </button>
             </>
@@ -93,7 +89,9 @@ export function ListPage() {
           <li key={recipe.id}>
             <Link to={`/recipes/${recipe.id}`}>
               <span>{recipe.title}</span>
-              <span className="meta">{recipe.servings} servings</span>
+              <span className="meta">
+                {recipe.servings} {recipe.servings === 1 ? "serving" : "servings"}
+              </span>
             </Link>
           </li>
         ))}

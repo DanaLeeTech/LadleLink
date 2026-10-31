@@ -235,7 +235,9 @@ describe("parseIngredientLine", () => {
   });
 
   it("decodes HTML fraction entities from recipe JSON-LD lines", () => {
-    expect(parseIngredientLine("1 &frac14; teaspoon fine sea salt, divided, to taste")).toMatchObject({
+    expect(
+      parseIngredientLine("1 &frac14; teaspoon fine sea salt, divided, to taste")
+    ).toMatchObject({
       quantity: 1.25,
       unit: "tsp",
       name: "fine sea salt",
@@ -399,9 +401,7 @@ describe("parseIngredientLine", () => {
         unit: "g",
         name: "Bread Flour",
       });
-      expect(
-        parseIngredientLine("1/2 Cup Milk ((warm) - 118 milliliters)")
-      ).toMatchObject({
+      expect(parseIngredientLine("1/2 Cup Milk ((warm) - 118 milliliters)")).toMatchObject({
         quantity: 118,
         unit: "ml",
         name: "Milk (warm)",
@@ -410,9 +410,7 @@ describe("parseIngredientLine", () => {
 
     it("keeps prep and substitution notes when stripping conversions", () => {
       expect(
-        parseIngredientLine(
-          "3 Tablespoons Unsalted Butter ((sliced & softened) - 43 grams)"
-        )
+        parseIngredientLine("3 Tablespoons Unsalted Butter ((sliced & softened) - 43 grams)")
       ).toMatchObject({
         quantity: 43,
         unit: "g",
@@ -808,14 +806,16 @@ Instructions
   });
 
   it("uses an explicit title and servings when present", () => {
-    const recipe = parseRecipeText(`
+    const recipe = parseRecipeText(
+      `
 Banana Chocolate Chip Muffins
 Serves: 12
 Ingredients
 - 1 cup flour
 Instructions
 1. Mix and bake.
-`.trim());
+`.trim()
+    );
     expect(recipe.title).toBe("Banana Chocolate Chip Muffins");
     expect(recipe.servings).toBe(12);
     expect(recipe.notes).toContain("Serves: 12");
@@ -861,9 +861,7 @@ Instructions
     expect(closingHashes.title).toBe("Brownies");
 
     const makes = parseRecipeText(
-      ["# Rum Balls", "Makes 12", "Ingredients", "2 cups biscuit crumbs", "Mix well."].join(
-        "\n"
-      )
+      ["# Rum Balls", "Makes 12", "Ingredients", "2 cups biscuit crumbs", "Mix well."].join("\n")
     );
     expect(makes.title).toBe("Rum Balls");
     expect(makes.servings).toBe(12);
@@ -974,9 +972,7 @@ Method
   });
 
   it("throws when no ingredients can be extracted", () => {
-    expect(() => parseRecipeText("Just some notes\nNothing useful")).toThrow(
-      /ingredients/i
-    );
+    expect(() => parseRecipeText("Just some notes\nNothing useful")).toThrow(/ingredients/i);
   });
 
   const miloWeetBixCaption = `
@@ -1021,35 +1017,41 @@ Makes 28 balls for approx. $4.99 - that's just 18c each!
   });
 
   it("accepts Ingredients: with a colon and Ingredients List", () => {
-    const withColon = parseRecipeText(`
+    const withColon = parseRecipeText(
+      `
 Easy Snack
 Ingredients:
 - 1 cup flour
 - 2 eggs
 Mix and bake.
-`.trim());
+`.trim()
+    );
     expect(withColon.ingredients).toHaveLength(2);
     expect(withColon.steps[0]).toMatch(/Mix and bake/i);
 
-    const withList = parseRecipeText(`
+    const withList = parseRecipeText(
+      `
 Snack Balls
 Ingredients List
 1 cup oats
 2 tbsp honey
 Roll into balls.
-`.trim());
+`.trim()
+    );
     expect(withList.ingredients).toHaveLength(2);
     expect(withList.steps[0]).toMatch(/Roll into balls/i);
   });
 
   it("parses a headerless qty list plus prose method", () => {
-    const recipe = parseRecipeText(`
+    const recipe = parseRecipeText(
+      `
 No-Bake Bites
 1 cup oats
 1/2 cup peanut butter
 2 tbsp honey
 Mix well and chill.
-`.trim());
+`.trim()
+    );
     expect(recipe.title).toBe("No-Bake Bites");
     expect(recipe.ingredients).toHaveLength(3);
     expect(recipe.steps).toEqual(["Mix well and chill."]);
@@ -1076,9 +1078,7 @@ What do you think of this?
     expect(recipe.title).toMatch(/Milo Weet-Bix Balls/i);
     expect(recipe.servings).toBe(28);
     expect(recipe.ingredients).toHaveLength(4);
-    expect(recipe.steps.some((s) => /Mix everything together/i.test(s))).toBe(
-      true
-    );
+    expect(recipe.steps.some((s) => /Mix everything together/i.test(s))).toBe(true);
     const blob = [
       recipe.title,
       ...recipe.ingredients.map((i) => i.name),
@@ -1137,9 +1137,9 @@ describe("import reliability", () => {
   const read = (name: string) => readFileSync(join(fixtures, name), "utf8");
 
   it("rejects a 404 page", () => {
-    expect(() =>
-      parseRecipeHtml(read("not-found.html"), "https://example.com/missing")
-    ).toThrow(/Could not extract a recipe/);
+    expect(() => parseRecipeHtml(read("not-found.html"), "https://example.com/missing")).toThrow(
+      /Could not extract a recipe/
+    );
   });
 
   it("rejects a Wikipedia-style article", () => {
@@ -1150,9 +1150,9 @@ describe("import reliability", () => {
 
   it("ignores navigation and menu link lists when there is no schema", () => {
     expect(parseHeuristic(read("nav-list.html"), "https://example.com/recipes")).toBeNull();
-    expect(() =>
-      parseRecipeHtml(read("nav-list.html"), "https://example.com/recipes")
-    ).toThrow(/Could not extract a recipe/);
+    expect(() => parseRecipeHtml(read("nav-list.html"), "https://example.com/recipes")).toThrow(
+      /Could not extract a recipe/
+    );
   });
 
   it("keeps HowToSection headings and strips step prefixes", () => {
@@ -1204,12 +1204,11 @@ describe("import reliability", () => {
       <ol><li>Mix the batter and bake until golden.</li></ol>`;
     const recipe = parseRecipeHtml(html, "https://example.com/cake");
     expect(recipe.ingredients).toHaveLength(3);
-    expect(recipe.sections).toEqual([
-      { kind: "ingredients", at: 1, title: "For the icing" },
-    ]);
+    expect(recipe.sections).toEqual([{ kind: "ingredients", at: 1, title: "For the icing" }]);
   });
 
-  it("strips Step 1 style prefixes", () => {    expect(stripStepNumber("Step 1. Preheat the oven.")).toBe("Preheat the oven.");
+  it("strips Step 1 style prefixes", () => {
+    expect(stripStepNumber("Step 1. Preheat the oven.")).toBe("Preheat the oven.");
     expect(stripStepNumber("step 2: Mix well")).toBe("Mix well");
     expect(stripStepNumber("3) Bake")).toBe("Bake");
   });
@@ -1221,9 +1220,7 @@ describe("import reliability", () => {
   });
 
   it("keeps decimal amounts at the start of a step", () => {
-    expect(stripStepNumber("2.5 cups flour into the bowl.")).toBe(
-      "2.5 cups flour into the bowl."
-    );
+    expect(stripStepNumber("2.5 cups flour into the bowl.")).toBe("2.5 cups flour into the bowl.");
     expect(stripStepNumber("1.5 kg beef, cubed")).toBe("1.5 kg beef, cubed");
     expect(stripStepNumber("2. Preheat the oven.")).toBe("Preheat the oven.");
   });
@@ -1279,9 +1276,7 @@ describe("import reliability", () => {
       <ol><li>Mix the batter and bake until golden.</li></ol>`;
     const recipe = parseRecipeHtml(html, "https://example.com/cake");
     expect(recipe.ingredients).toHaveLength(3);
-    expect(recipe.sections).toEqual([
-      { kind: "ingredients", at: 0, title: "For the icing" },
-    ]);
+    expect(recipe.sections).toEqual([{ kind: "ingredients", at: 0, title: "For the icing" }]);
   });
 
   it("reads servings labels regardless of case", () => {
@@ -1310,9 +1305,9 @@ describe("import reliability", () => {
           <li><a href="/c">Vote results</a></li>
         </ul>
       </article>`;
-    expect(() =>
-      parseRecipeHtml(html, "https://news.example.com/a")
-    ).toThrow(/Could not extract a recipe/);
+    expect(() => parseRecipeHtml(html, "https://news.example.com/a")).toThrow(
+      /Could not extract a recipe/
+    );
   });
 
   it("ignores measured lists in nav, footer and aside", () => {
@@ -1356,9 +1351,9 @@ describe("import reliability", () => {
       <h2>Ingredients</h2>
       <ul><li>2 cups flour</li><li>1 cup milk</li><li>2 eggs</li></ul>`;
     expect(parseHeuristic(html, "https://example.com/batter")).toBeNull();
-    expect(() =>
-      parseRecipeHtml(html, "https://example.com/batter")
-    ).toThrow(/Could not extract a recipe/);
+    expect(() => parseRecipeHtml(html, "https://example.com/batter")).toThrow(
+      /Could not extract a recipe/
+    );
   });
 
   it("accepts a schema.org microdata Recipe page", () => {

@@ -83,12 +83,7 @@ const CONVERSION_ALIAS_SEEDS: Record<string, string[]> = {
     "cooking oil",
     "huile",
   ],
-  "olive oil": [
-    "olive oil",
-    "extra-virgin olive oil",
-    "extra virgin olive oil",
-    "evoo",
-  ],
+  "olive oil": ["olive oil", "extra-virgin olive oil", "extra virgin olive oil", "evoo"],
   milk: [
     "milk",
     "whole milk",
@@ -129,20 +124,8 @@ const CONVERSION_ALIAS_SEEDS: Record<string, string[]> = {
     "brown onion",
     "brown onions",
   ],
-  tomato: [
-    "tomato",
-    "tomatoes",
-    "roma tomato",
-    "roma tomatoes",
-    "plum tomato",
-    "plum tomatoes",
-  ],
-  "cherry tomato": [
-    "cherry tomato",
-    "cherry tomatoes",
-    "grape tomato",
-    "grape tomatoes",
-  ],
+  tomato: ["tomato", "tomatoes", "roma tomato", "roma tomatoes", "plum tomato", "plum tomatoes"],
+  "cherry tomato": ["cherry tomato", "cherry tomatoes", "grape tomato", "grape tomatoes"],
   potato: [
     "potato",
     "potatoes",
@@ -590,9 +573,7 @@ export function matchingConversionLabels(name: string): string[] {
     }
   }
 
-  return [...best]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .map(([label]) => label);
+  return [...best].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([label]) => label);
 }
 
 function normalizeForInfer(name: string): string {
@@ -702,7 +683,9 @@ export function inferConversionKey(name: string): string | undefined {
 }
 
 /** Name used for density / piece-weight lookup. */
-export function resolveConversionName(ingredient: Pick<Ingredient, "name" | "conversionKey">): string {
+export function resolveConversionName(
+  ingredient: Pick<Ingredient, "name" | "conversionKey">
+): string {
   const key = ingredient.conversionKey?.trim();
   if (key) return key;
   return ingredient.name || "";

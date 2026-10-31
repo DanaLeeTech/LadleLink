@@ -47,7 +47,10 @@ function migrate(db: Database.Database): void {
     .sort();
 
   const applied = new Set(
-    db.prepare("SELECT id FROM schema_migrations").all().map((r) => (r as { id: string }).id)
+    db
+      .prepare("SELECT id FROM schema_migrations")
+      .all()
+      .map((r) => (r as { id: string }).id)
   );
 
   for (const file of files) {
@@ -65,8 +68,7 @@ function migrate(db: Database.Database): void {
 
   // Seed measurement prefs if missing
   const row = db.prepare("SELECT value FROM settings WHERE key = ?").get("measurement") as
-    | { value: string }
-    | undefined;
+    { value: string } | undefined;
   if (!row) {
     db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
       "measurement",
@@ -113,7 +115,9 @@ export class RecipeStore {
   constructor(private db: Database.Database) {}
 
   list(query?: string, tag?: string): Recipe[] {
-    let rows = this.db.prepare("SELECT * FROM recipes ORDER BY updated_at DESC").all() as RecipeRow[];
+    const rows = this.db
+      .prepare("SELECT * FROM recipes ORDER BY updated_at DESC")
+      .all() as RecipeRow[];
     let recipes = rows.map(rowToRecipe);
     if (query) {
       const q = query.toLowerCase();
@@ -132,7 +136,8 @@ export class RecipeStore {
   }
 
   get(id: string): Recipe | null {
-    const row = this.db.prepare("SELECT * FROM recipes WHERE id = ?").get(id) as RecipeRow | undefined;
+    const row = this.db.prepare("SELECT * FROM recipes WHERE id = ?").get(id) as
+      RecipeRow | undefined;
     return row ? rowToRecipe(row) : null;
   }
 
@@ -235,8 +240,7 @@ export class RecipeStore {
 
   getMeasurementPrefs(): MeasurementPrefs {
     const row = this.db.prepare("SELECT value FROM settings WHERE key = ?").get("measurement") as
-      | { value: string }
-      | undefined;
+      { value: string } | undefined;
     if (!row) return { ...DEFAULT_MEASUREMENT_PREFS };
     return { ...DEFAULT_MEASUREMENT_PREFS, ...JSON.parse(row.value) };
   }

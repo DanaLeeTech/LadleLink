@@ -12,9 +12,7 @@ function failedBoundary(onDelete?: () => Promise<void>) {
 }
 
 function renderFallback(boundary: RecipeErrorBoundary): string {
-  return renderToStaticMarkup(
-    createElement(MemoryRouter, null, boundary.render() as ReactElement)
-  );
+  return renderToStaticMarkup(createElement(MemoryRouter, null, boundary.render() as ReactElement));
 }
 
 describe("RecipeErrorBoundary", () => {
@@ -53,8 +51,6 @@ describe("RecipeErrorBoundary", () => {
     const broken = failedBoundary(async () => {
       throw new Error("Delete failed: offline");
     });
-    await assert.doesNotReject(
-      (broken as unknown as { onDelete: () => Promise<void> }).onDelete()
-    );
+    await assert.doesNotReject((broken as unknown as { onDelete: () => Promise<void> }).onDelete());
   });
 });

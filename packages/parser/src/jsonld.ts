@@ -1,6 +1,11 @@
 import * as cheerio from "cheerio";
 import type { ParsedRecipe, RecipeSection } from "@ladlelink/types";
-import { asStringArray, cleanRecipeText, parseIngredientLine, parseServings } from "./ingredient-line.js";
+import {
+  asStringArray,
+  cleanRecipeText,
+  parseIngredientLine,
+  parseServings,
+} from "./ingredient-line.js";
 import { resolvePhotoUrl } from "./photo-url.js";
 
 function isRecipeType(type: unknown): boolean {
@@ -88,9 +93,7 @@ function recipeFromJsonLd(
   if (!isRecipeType(obj["@type"])) return null;
 
   const ingredientLines = asStringArray(obj.recipeIngredient ?? obj.ingredients);
-  const { steps, sections } = instructionsWithSections(
-    obj.recipeInstructions ?? obj.instructions
-  );
+  const { steps, sections } = instructionsWithSections(obj.recipeInstructions ?? obj.instructions);
   const photoUrl = resolvePhotoUrl(imageUrlFrom(obj.image) ?? fallbackImage, sourceUrl);
 
   const title = String(obj.name ?? obj.headline ?? "Untitled recipe").trim();
@@ -120,11 +123,7 @@ export function parseJsonLd(html: string, sourceUrl: string): ParsedRecipe | nul
       const parsed = JSON.parse(raw.replace(/[\u0000-\u0019]+/g, " "));
       for (const node of unwrapGraph(parsed)) {
         if (node && typeof node === "object") {
-          const recipe = recipeFromJsonLd(
-            node as Record<string, unknown>,
-            sourceUrl,
-            ogImage
-          );
+          const recipe = recipeFromJsonLd(node as Record<string, unknown>, sourceUrl, ogImage);
           if (recipe && recipe.ingredients.length) return recipe;
         }
       }

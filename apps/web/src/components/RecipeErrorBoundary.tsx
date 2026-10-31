@@ -42,7 +42,9 @@ export class RecipeErrorBoundary extends Component<Props, State> {
     return (
       <main className="panel">
         <p className="error">This recipe couldn't be loaded.</p>
-        <p className="lede">Its saved data is incomplete or damaged. Delete it to clear the entry.</p>
+        <p className="lede">
+          Its saved data is incomplete or damaged. Delete it to clear the entry.
+        </p>
         {this.state.error && <p className="error">{this.state.error}</p>}
         <div className="toolbar">
           <button

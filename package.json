@@ -13,12 +13,18 @@
     "build": "npm run build:packages && npm run build -w @ladlelink/web && npm run build -w @ladlelink/server",
     "build:mobile": "npm run build:packages && npm run build:capacitor -w @ladlelink/web && npm run sync -w @ladlelink/mobile",
     "dev": "npm run build:packages && concurrently -n server,web -c blue,green \"npm run dev -w @ladlelink/server\" \"npm run dev -w @ladlelink/web\"",
-    "test": "npm run build:packages && npm run test -w @ladlelink/units && npm run test -w @ladlelink/scaling && npm run test -w @ladlelink/parser && npm run test -w @ladlelink/url-guard",
+    "test": "npm run build:packages && npm run test -w @ladlelink/units && npm run test -w @ladlelink/scaling && npm run test -w @ladlelink/parser && npm run test -w @ladlelink/url-guard && npm run test -w @ladlelink/web",
+    "lint": "eslint . && prettier --check \"apps/web/src/**/*.{ts,tsx,css}\" \"apps/server/src/**/*.ts\" \"packages/*/src/**/*.ts\" \"apps/mobile/plugins/*/src/**/*.ts\"",
     "start": "npm run start -w @ladlelink/server"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
-    "typescript": "^5.8.2"
+    "eslint": "^10.14.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "^3.9.10",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.72.1"
   },
   "engines": {
     "node": ">=20"

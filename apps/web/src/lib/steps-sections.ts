@@ -10,10 +10,7 @@ export interface StepGroup {
  * Split steps at their "steps" section headings so each group gets its own editor.
  * Steps before the first heading form an untitled first group.
  */
-export function splitStepsBySection(
-  steps: string[],
-  sections: RecipeSection[] = []
-): StepGroup[] {
+export function splitStepsBySection(steps: string[], sections: RecipeSection[] = []): StepGroup[] {
   const marks = sections
     .filter((section) => section.kind === "steps")
     .slice()

@@ -56,9 +56,7 @@ export function decodeHtmlEntities(text: string): string {
   return text.replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]+);/g, (match, ent: string) => {
     if (ent[0] === "#") {
       const code =
-        ent[1] === "x" || ent[1] === "X"
-          ? parseInt(ent.slice(2), 16)
-          : parseInt(ent.slice(1), 10);
+        ent[1] === "x" || ent[1] === "X" ? parseInt(ent.slice(2), 16) : parseInt(ent.slice(1), 10);
       if (Number.isFinite(code)) return String.fromCodePoint(code);
       return match;
     }
@@ -77,8 +75,7 @@ const BARE_SEASONING_UNITS =
   "pinch|pinches|dash|dashes|drop|drops|smidgen|smidgens|handful|handfuls|twist|twists|dollop|dollops|knob|knobs";
 const BARE_SEASONING_PATTERN = `((?<![a-zA-Z])(?:${BARE_SEASONING_UNITS})(?![a-zA-Z]))`;
 
-const NUMBERED_STEP_PREFIX =
-  /^\s*(?:(?:step\s*)?\d+\s*[.):\-–—]\s*(?!\d)|step\s*\d+)/i;
+const NUMBERED_STEP_PREFIX = /^\s*(?:(?:step\s*)?\d+\s*[.):\-–—]\s*(?!\d)|step\s*\d+)/i;
 
 /** Phrases that mark garnish even when not the leading unit token. */
 const GARNISH_PHRASE =
@@ -164,8 +161,7 @@ function findMeasures(text: string): MeasureSpan[] {
     }
     out.push({
       quantity,
-      quantityMax:
-        m.groups?.rangeMax != null ? Number(m.groups.rangeMax) : undefined,
+      quantityMax: m.groups?.rangeMax != null ? Number(m.groups.rangeMax) : undefined,
       unit: canonicalizeUnit(unitRaw),
       index: m.index,
       length: m[0].length,
@@ -250,11 +246,7 @@ function trimEdges(text: string): string {
     out = out.slice(0, -1).replace(EDGE_JUNK, "");
   }
   // Whole line wrapped in brackets: "(2 cups flour)"
-  while (
-    out.startsWith("(") &&
-    out.endsWith(")") &&
-    count(out, "(") === count(out, ")")
-  ) {
+  while (out.startsWith("(") && out.endsWith(")") && count(out, "(") === count(out, ")")) {
     out = trimEdges(out.slice(1, -1));
   }
   return out;
@@ -351,10 +343,7 @@ function prepareIngredientLine(cleaned: string): PreparedLine {
   }
 
   for (const [char, value] of Object.entries(UNICODE_FRACTIONS)) {
-    text = text.replace(
-      new RegExp(`(\\d)\\s*${char}`),
-      (_, whole) => `${Number(whole) + value}`
-    );
+    text = text.replace(new RegExp(`(\\d)\\s*${char}`), (_, whole) => `${Number(whole) + value}`);
     // replaceAll: a second standalone "½" in the same line must normalize too
     text = text.replaceAll(char, String(value));
   }
@@ -373,8 +362,9 @@ function prepareIngredientLine(cleaned: string): PreparedLine {
     .replace(/\b(?:cuill(?:e|è)res?|c\.?)\s*à\s*soupe(?![a-zA-Z])/gi, "tbsp")
     .replace(/\b(?:cuill(?:e|è)res?|c\.?)\s*à\s*caf(?:é|e)(?![a-zA-Z])/gi, "tsp");
   // Centilitres have no canonical unit; keep the amount in millilitres
-  text = text.replace(/(\d+(?:[.,]\d+)?)\s*cl\b/gi, (_, n: string) =>
-    `${Number(n.replace(",", ".")) * 10} ml`
+  text = text.replace(
+    /(\d+(?:[.,]\d+)?)\s*cl\b/gi,
+    (_, n: string) => `${Number(n.replace(",", ".")) * 10} ml`
   );
 
   // A per-piece weight only counts after the name ("150-180g each"), never the
@@ -384,9 +374,7 @@ function prepareIngredientLine(cleaned: string): PreparedLine {
     each != null && /[a-zA-Z][^a-zA-Z0-9]{0,2}$/.test(text.slice(0, each.index));
   // Skip only when words sit before the closing bracket and the match did not
   // already close it: "(50 g each w/o shell)" is one note, "(150-180g each) x" a weight.
-  const eachGroupText = each
-    ? upToNextBracket(text, (each.index ?? 0) + each[0].length)
-    : "";
+  const eachGroupText = each ? upToNextBracket(text, (each.index ?? 0) + each[0].length) : "";
   const eachClosedGroup = each != null && each[0].endsWith(")");
   if (each && eachAfterName && (eachClosedGroup || !/[a-zA-Z]/.test(eachGroupText))) {
     const unit = unitLabel(canonicalizeUnit(each[3] ?? ""));
@@ -497,7 +485,10 @@ function bracketExtras(content: string): string {
   for (const measure of [...findMeasures(content)].sort((a, b) => b.index - a.index)) {
     out = `${out.slice(0, measure.index)} ${out.slice(measure.index + measure.length)}`;
   }
-  return out.replace(DIMENSION_RE, " ").replace(/[^a-zA-Z]+/g, " ").trim();
+  return out
+    .replace(DIMENSION_RE, " ")
+    .replace(/[^a-zA-Z]+/g, " ")
+    .trim();
 }
 
 /** True when the bracket text holds a cooking measure or a dimension. */
@@ -657,9 +648,7 @@ export function parseIngredientLine(line: string): Ingredient {
     prep.leading.unit === ing.unit &&
     Math.abs(prep.leading.quantity - ing.quantity) < 1e-9;
   const allNotes = cleanNotes(
-    [...prep.notes, ...(leadingWon ? prep.leadNotes : []), ing.notes]
-      .filter(Boolean)
-      .join(", ")
+    [...prep.notes, ...(leadingWon ? prep.leadNotes : []), ing.notes].filter(Boolean).join(", ")
   );
   return allNotes ? { ...ing, notes: allNotes } : ing;
 }
@@ -677,7 +666,7 @@ function parseIngredientCore(cleaned: string): Ingredient {
     return withSuggestedKey({ quantity: 0, unit: "garnish", name });
   }
 
-  let rest = cleaned;
+  const rest = cleaned;
 
   // Combined mass: "1 lb 4 oz", "1 kg 200 g"
   const combined = rest.match(
@@ -851,7 +840,7 @@ function fromParts(
 ): Ingredient {
   const size = parseSize(sizeRaw);
   const unit = unitRaw ? canonicalizeUnit(unitRaw) : "";
-  let name = cleanName(nameRaw || "");
+  const name = cleanName(nameRaw || "");
 
   // Size may still be at the start of the name: "1 egg large" is rare; "large" already handled
   if (!size && name) {
@@ -889,7 +878,8 @@ function finalize(ing: {
   name: string;
   size?: ProduceSize;
 }): Ingredient {
-  let { quantity, unit, name, size } = ing;
+  const { quantity, size } = ing;
+  let { unit, name } = ing;
 
   // "6 garlic cloves, smashed…" — produce was captured as unit before clove
   if (unit && PRODUCE_UNIT_SET.has(unit)) {
@@ -940,8 +930,8 @@ const FRENCH_INFER_WORDS: Record<string, string> = {
   oeuf: "egg",
   oeufs: "eggs",
   // "œ" (U+0153) has no NFD decomposition, so the ligature needs its own keys
-  "œuf": "egg",
-  "œufs": "eggs",
+  œuf: "egg",
+  œufs: "eggs",
   pomme: "apple",
   pommes: "apples",
 };
@@ -962,8 +952,7 @@ function frenchInferName(name: string): string {
  */
 function withSuggestedKey(ing: Ingredient): Ingredient {
   if (!ing.name.trim()) return ing;
-  const suggested =
-    inferConversionKey(ing.name) || inferConversionKey(frenchInferName(ing.name));
+  const suggested = inferConversionKey(ing.name) || inferConversionKey(frenchInferName(ing.name));
   if (!suggested) return ing;
   return { ...ing, conversionKey: suggested };
 }
@@ -1021,15 +1010,17 @@ export function cleanRecipeText(text: string): string {
 
 /** Drop Markdown emphasis markers: "**Scones**" → "Scones". */
 export function stripMarkdownEmphasis(text: string): string {
-  return text
-    .replace(/\*\*\*(.+?)\*\*\*/g, "$1")
-    .replace(/\*\*(.+?)\*\*/g, "$1")
-    .replace(/\*(.+?)\*/g, "$1")
-    .replace(/___(.+?)___/g, "$1")
-    .replace(/__(.+?)__/g, "$1")
-    .replace(/(^|\s)_(.+?)_(?=\s|$)/g, "$1$2")
-    // A lone marker left at an edge (a bullet-stripped "**Scones**")
-    .replace(/^[*_]+|[*_]+$/g, "");
+  return (
+    text
+      .replace(/\*\*\*(.+?)\*\*\*/g, "$1")
+      .replace(/\*\*(.+?)\*\*/g, "$1")
+      .replace(/\*(.+?)\*/g, "$1")
+      .replace(/___(.+?)___/g, "$1")
+      .replace(/__(.+?)__/g, "$1")
+      .replace(/(^|\s)_(.+?)_(?=\s|$)/g, "$1$2")
+      // A lone marker left at an edge (a bullet-stripped "**Scones**")
+      .replace(/^[*_]+|[*_]+$/g, "")
+  );
 }
 
 /**

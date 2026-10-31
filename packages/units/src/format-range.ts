@@ -1,10 +1,6 @@
 import { formatQuantity } from "./format.js";
 
-export function formatQuantityRange(
-  quantity: number,
-  unit: string,
-  quantityMax?: number
-): string {
+export function formatQuantityRange(quantity: number, unit: string, quantityMax?: number): string {
   if (
     quantityMax != null &&
     Number.isFinite(quantityMax) &&

@@ -167,7 +167,7 @@ export async function encodePayloadForQr(
       return { data: gzData, truncated: true };
     }
   } catch {
-    // ignore
+    // CompressionStream unavailable; fall back to the compact payload.
   }
 
   // Extreme fallback: drop steps from QR (PNG metadata still has full data).
@@ -177,9 +177,7 @@ export async function encodePayloadForQr(
   return { data: RECIPE_CARD_QR_PREFIX + minimalJson, truncated: true };
 }
 
-export async function decodePayloadFromQrData(
-  data: string
-): Promise<RecipeCardPayload | null> {
+export async function decodePayloadFromQrData(data: string): Promise<RecipeCardPayload | null> {
   if (data.startsWith(RECIPE_CARD_QR_PREFIX_GZ)) {
     try {
       const json = await gunzipBase64(data.slice(RECIPE_CARD_QR_PREFIX_GZ.length));
@@ -250,9 +248,7 @@ export function injectPngRecipeMetadata(
   return encode(filtered);
 }
 
-export function extractPngRecipeMetadata(
-  pngBytes: Uint8Array
-): RecipeCardPayload | null {
+export function extractPngRecipeMetadata(pngBytes: Uint8Array): RecipeCardPayload | null {
   try {
     const chunks = extract(pngBytes);
     for (const chunk of chunks) {
@@ -263,7 +259,7 @@ export function extractPngRecipeMetadata(
           return decodeMetadataText(decoded.text);
         }
       } catch {
-        // continue
+        // One unreadable tEXt chunk must not hide the others.
       }
     }
   } catch {

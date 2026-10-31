@@ -19,19 +19,16 @@ const METADATA_LINE =
  * Servings metadata lines. "Pour 4 personnes" is French servings text — never a
  * bare "pour", which would swallow steps like "Pour the batter…".
  */
-const SERVINGS_LINE =
-  /^(?:servings?|serves|yield|makes)\b|^pour\s+\d+\s+personnes?\b/i;
+const SERVINGS_LINE = /^(?:servings?|serves|yield|makes)\b|^pour\s+\d+\s+personnes?\b/i;
 /** Common bullets plus frequent emoji used as list markers in social captions. */
 const BULLET_PREFIX = /^\s*(?:[-*•●◦▪▫✅✔☑☐🥣🥄🧂🍪]|[\u{1F300}-\u{1F9FF}])\s*/u;
 
-const LEADING_QTY =
-  /^(?:\d+\s+\d+\/\d+|\d+\/\d+|[¼½¾⅓⅔⅛⅜⅝⅞]|\d+(?:\.\d+)?)\b/;
+const LEADING_QTY = /^(?:\d+\s+\d+\/\d+|\d+\/\d+|[¼½¾⅓⅔⅛⅜⅝⅞]|\d+(?:\.\d+)?)\b/;
 
 const IG_CHROME =
   /^(?:liked by|view (?:all )?(?:\d+ )?comments?|what do you think(?: of this)?\??|add a comment(?:\.\.\.)?|suggested for you|sponsored|follow|following|message|share|save|send|reel|reels|posts?|tagged|original audio|see translation|view replies?|hours? ago|minutes? ago|days? ago|just now|\d+\s*(?:h|m|d|w)$)/i;
 
-const HASHTAG_OR_HANDLE_LINE =
-  /^(?:#\w[\w.]*|\@\w[\w.]*)(?:\s+(?:#\w[\w.]*|\@\w[\w.]*))*$/;
+const HASHTAG_OR_HANDLE_LINE = /^(?:#\w[\w.]*|\@\w[\w.]*)(?:\s+(?:#\w[\w.]*|\@\w[\w.]*))*$/;
 const URL_LINE = /^https?:\/\/\S+$/i;
 const PRICING_CHATTER =
   /^(?:that's just|thats just|only\s+\$|approx\.?\s+\$|\$[\d.]+(?:\s*each)?|[\d.]+\s*c(?:ents?)?\s+each)\b/i;
@@ -66,9 +63,7 @@ export function repairOcrLine(line: string): string {
 }
 
 function normalizeLine(raw: string): string {
-  return cleanRecipeText(
-    repairOcrLine(raw.replace(MD_HEADING, "$1").replace(BULLET_PREFIX, ""))
-  );
+  return cleanRecipeText(repairOcrLine(raw.replace(MD_HEADING, "$1").replace(BULLET_PREFIX, "")));
 }
 
 function isBlank(line: string): boolean {
@@ -130,12 +125,7 @@ function isLowQualityOcrJunk(line: string): boolean {
   if (letters === 0) return true;
   if (letters / t.length < 0.4 && !UNIT_WORD.test(t) && !LEADING_QTY.test(t)) return true;
   // Short lines with UI/OCR symbols and no measure
-  if (
-    t.length < 28 &&
-    /[#\[\]|¥©®]/.test(t) &&
-    !looksLikeIngredientLine(t) &&
-    !UNIT_WORD.test(t)
-  ) {
+  if (t.length < 28 && /[#\[\]|¥©®]/.test(t) && !looksLikeIngredientLine(t) && !UNIT_WORD.test(t)) {
     return true;
   }
   return false;
@@ -179,7 +169,11 @@ export function looksLikeIngredientLine(line: string): boolean {
   }
 
   // OCR-damaged qty but clear unit + short name ("cup desiccated coconut")
-  if (UNIT_WORD.test(t) && t.split(/\s+/).length <= 10 && !/^(mix|stir|bake|roll|cook|add)\b/i.test(t)) {
+  if (
+    UNIT_WORD.test(t) &&
+    t.split(/\s+/).length <= 10 &&
+    !/^(mix|stir|bake|roll|cook|add)\b/i.test(t)
+  ) {
     return true;
   }
 
@@ -334,10 +328,7 @@ export function parseRecipeText(text: string): ParsedRecipe {
       .slice(ingredientsIdx + 1, stepsIdx)
       .filter(
         (l) =>
-          !isBlank(l) &&
-          !INGREDIENTS_HEADER.test(l) &&
-          !isNoiseLine(l) &&
-          !METADATA_LINE.test(l)
+          !isBlank(l) && !INGREDIENTS_HEADER.test(l) && !isNoiseLine(l) && !METADATA_LINE.test(l)
       );
     stepLines = coalesceStepLines(
       lines

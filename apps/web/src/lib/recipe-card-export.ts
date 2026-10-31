@@ -27,9 +27,7 @@ export const DEFAULT_RECIPE_CARD_COLORS: RecipeCardColors = {
   section: "#5a1d34",
 };
 
-export function scaledToExportIngredients(
-  scaled: ScaledIngredient[]
-): Ingredient[] {
+export function scaledToExportIngredients(scaled: ScaledIngredient[]): Ingredient[] {
   return scaled.map((ing) => {
     const next: Ingredient = {
       quantity: ing.quantity,
@@ -101,9 +99,7 @@ export async function generateQrDataUrl(payload: RecipeCardPayload): Promise<{
       lastError = err;
     }
   }
-  throw lastError instanceof Error
-    ? lastError
-    : new Error("Could not encode recipe QR code");
+  throw lastError instanceof Error ? lastError : new Error("Could not encode recipe QR code");
 }
 
 export interface RenderRecipeCardOptions {
@@ -143,11 +139,7 @@ function roundRect(
   ctx.closePath();
 }
 
-function wrapText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number
-): string[] {
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length === 0) return [""];
   const lines: string[] = [];
@@ -185,9 +177,7 @@ async function ensureCardFonts(dense: boolean): Promise<void> {
  * Paint the recipe card with Canvas 2D so export layout matches measured text
  * (DOM→image libraries mis-measure Fraunces and cause overlaps).
  */
-export async function renderRecipeCardPng(
-  options: RenderRecipeCardOptions
-): Promise<Blob> {
+export async function renderRecipeCardPng(options: RenderRecipeCardOptions): Promise<Blob> {
   const dense = Boolean(options.dense);
   await ensureCardFonts(dense);
   const qrImage = await loadImage(options.qrDataUrl);
@@ -256,10 +246,7 @@ export async function renderRecipeCardPng(
     if (i < options.steps.length - 1) contentH += stepGap;
   }
 
-  const cardH = Math.min(
-    RECIPE_CARD_HEIGHT - outerPadY * 2,
-    cardPadTop + contentH + cardPadBottom
-  );
+  const cardH = Math.min(RECIPE_CARD_HEIGHT - outerPadY * 2, cardPadTop + contentH + cardPadBottom);
   const cardX = outerPadX;
   const cardY = (RECIPE_CARD_HEIGHT - cardH) / 2;
 
@@ -351,10 +338,7 @@ export async function renderRecipeCardPng(
   ctx.restore();
 
   const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error("PNG encode failed"))),
-      "image/png"
-    );
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("PNG encode failed"))), "image/png");
   });
   const buf = new Uint8Array(await blob.arrayBuffer());
   const withMeta = injectPngRecipeMetadata(buf, options.payload);

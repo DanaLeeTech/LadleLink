@@ -1,7 +1,7 @@
 /**
- * Regression checks for the 2026-10-28 parser round: "each" leading amounts,
- * noisy per-piece weights, "N and M/D", "minus", comma decimals, French articles,
- * aria-hidden servings, "Step 1Heat", JSON-LD images and title cleanup.
+ * Ingredient-note and each-weight coverage: "each" leading amounts, noisy per-piece
+ * weights, "N and M/D", "minus", comma decimals, French articles, aria-hidden
+ * servings, "Step 1Heat", JSON-LD images and title cleanup.
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -502,7 +502,10 @@ describe("numbered step prefixes", () => {
 describe("JSON-LD images", () => {
   it("reads an array of ImageObject urls (BBC style)", () => {
     const recipe = parseJsonLd(
-      recipeHtml({ ...baseRecipe, image: [{ "@type": "ImageObject", url: "https://img.test/bbc.jpg" }] }),
+      recipeHtml({
+        ...baseRecipe,
+        image: [{ "@type": "ImageObject", url: "https://img.test/bbc.jpg" }],
+      }),
       "https://example.com/cake"
     );
     expect(recipe?.photoUrl).toBe("https://img.test/bbc.jpg");
@@ -546,9 +549,16 @@ describe("title cleanup", () => {
     expect(html.title).toBe("Pancakes");
 
     const pasted = parseRecipeText(
-      ["Pancakes | Woolworths", "", "Ingredients", "- 2 cups flour", "- 1 cup milk", "", "Method", "1. Cook."].join(
-        "\n"
-      )
+      [
+        "Pancakes | Woolworths",
+        "",
+        "Ingredients",
+        "- 2 cups flour",
+        "- 1 cup milk",
+        "",
+        "Method",
+        "1. Cook.",
+      ].join("\n")
     );
     expect(pasted.title).toBe("Pancakes");
   });
@@ -562,7 +572,9 @@ describe("title cleanup", () => {
     ];
     for (const [raw, expected] of titles) {
       const recipe = parseRecipeText(
-        [raw, "", "Ingredients", "- 2 cups flour", "- 1 cup milk", "", "Method", "1. Bake."].join("\n")
+        [raw, "", "Ingredients", "- 2 cups flour", "- 1 cup milk", "", "Method", "1. Bake."].join(
+          "\n"
+        )
       );
       expect(recipe.title, raw).toBe(expected);
     }

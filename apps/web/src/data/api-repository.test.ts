@@ -45,3 +45,29 @@ describe("api repository import", () => {
     }
   });
 });
+
+describe("api repository auth token key", () => {
+  it("migrates the legacy ff-auth-token key on read", async () => {
+    stubLocalStorage();
+    store.clear();
+    store.set("ff-auth-token", "abc123");
+
+    const cfg = await createApiRepository().getDockerConfig();
+
+    assert.equal(cfg.authToken, "abc123");
+    assert.equal(store.get("ladlelink-auth-token"), "abc123");
+    assert.equal(store.has("ff-auth-token"), false);
+  });
+
+  it("reads the new key and leaves the legacy key alone when both exist", async () => {
+    stubLocalStorage();
+    store.clear();
+    store.set("ff-auth-token", "old");
+    store.set("ladlelink-auth-token", "new");
+
+    const cfg = await createApiRepository().getDockerConfig();
+
+    assert.equal(cfg.authToken, "new");
+    assert.equal(store.get("ff-auth-token"), "old");
+  });
+});

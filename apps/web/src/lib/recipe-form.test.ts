@@ -14,7 +14,10 @@ describe("validateRecipeForm", () => {
 
   it("rejects empty, zero and negative servings", () => {
     for (const servings of ["", 0, -2, Number.NaN] as const) {
-      assert.equal(validateRecipeForm("Pancakes", servings).servings, "Servings must be 1 or more.");
+      assert.equal(
+        validateRecipeForm("Pancakes", servings).servings,
+        "Servings must be 1 or more."
+      );
     }
   });
 

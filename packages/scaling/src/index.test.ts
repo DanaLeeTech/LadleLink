@@ -38,11 +38,10 @@ describe("scaleRecipeIngredients", () => {
   });
 
   it("applies preferred units when requested", () => {
-    const result = scaleRecipe(
-      { servings: 2, ingredients },
-      2,
-      { applyPreferredUnits: true, prefs: DEFAULT_MEASUREMENT_PREFS }
-    );
+    const result = scaleRecipe({ servings: 2, ingredients }, 2, {
+      applyPreferredUnits: true,
+      prefs: DEFAULT_MEASUREMENT_PREFS,
+    });
     expect(result.ingredients[0].unit).toBe("g");
   });
 
@@ -127,11 +126,7 @@ describe("scaleRecipeIngredients", () => {
     }
 
     // Normal quantities still scale.
-    const doubled = scaleRecipeIngredients(
-      [{ quantity: 2, unit: "cup", name: "flour" }],
-      4,
-      8
-    );
+    const doubled = scaleRecipeIngredients([{ quantity: 2, unit: "cup", name: "flour" }], 4, 8);
     expect(doubled[0].quantity).toBe(4);
     expect(doubled[0].displayQuantity).toBe("4");
   });

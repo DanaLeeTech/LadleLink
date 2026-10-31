@@ -89,20 +89,18 @@ describe("Australian measures", () => {
 
   it("is on by default for metric cups and off when US cups are chosen", () => {
     expect(usesAustralianMeasures(DEFAULT_MEASUREMENT_PREFS)).toBe(true);
-    expect(usesAustralianMeasures({ ...DEFAULT_MEASUREMENT_PREFS, cupStandard: "us" })).toBe(
-      false
-    );
+    expect(usesAustralianMeasures({ ...DEFAULT_MEASUREMENT_PREFS, cupStandard: "us" })).toBe(false);
     expect(usesAustralianMeasures(metric)).toBe(true);
     expect(usesAustralianMeasures(us)).toBe(false);
   });
 
   it("converts back from ml with the same factors", () => {
-    expect(convertIngredient({ quantity: 40, unit: "ml", name: "water" }, "tbsp", metric).quantity).toBe(
-      2
-    );
-    expect(convertIngredient({ quantity: 568, unit: "ml", name: "milk" }, "pint", metric).quantity).toBe(
-      1
-    );
+    expect(
+      convertIngredient({ quantity: 40, unit: "ml", name: "water" }, "tbsp", metric).quantity
+    ).toBe(2);
+    expect(
+      convertIngredient({ quantity: 568, unit: "ml", name: "milk" }, "pint", metric).quantity
+    ).toBe(1);
   });
 });
 
@@ -117,12 +115,18 @@ describe("density-aware conversion", () => {
   });
 
   it("converts brown sugar, rice, oil, and cocoa by volume", () => {
-    expect(convertIngredient({ quantity: 1, unit: "cup", name: "brown sugar" }, "g", us).quantity).toBe(
-      Math.round(240 * 0.9167)
-    );
-    expect(convertIngredient({ quantity: 1, unit: "cup", name: "rice" }, "g", us).needsDensity).toBeUndefined();
-    expect(convertIngredient({ quantity: 1, unit: "cup", name: "olive oil" }, "g", us).needsDensity).toBeUndefined();
-    expect(convertIngredient({ quantity: 1, unit: "cup", name: "cocoa powder" }, "g", us).needsDensity).toBeUndefined();
+    expect(
+      convertIngredient({ quantity: 1, unit: "cup", name: "brown sugar" }, "g", us).quantity
+    ).toBe(Math.round(240 * 0.9167));
+    expect(
+      convertIngredient({ quantity: 1, unit: "cup", name: "rice" }, "g", us).needsDensity
+    ).toBeUndefined();
+    expect(
+      convertIngredient({ quantity: 1, unit: "cup", name: "olive oil" }, "g", us).needsDensity
+    ).toBeUndefined();
+    expect(
+      convertIngredient({ quantity: 1, unit: "cup", name: "cocoa powder" }, "g", us).needsDensity
+    ).toBeUndefined();
   });
 
   it("converts water ml to grams 1:1", () => {
@@ -348,15 +352,12 @@ describe("piece weights", () => {
     expect(twistResult.needsWeight).toBeUndefined();
     expect(twistResult.quantity).toBeCloseTo(0.2, 5);
 
-    expect(
-      resolvePieceGrams({ quantity: 1, unit: "pinch", name: "salt" })
-    ).toBeCloseTo(0.36, 5);
-    expect(
-      resolvePieceGrams({ quantity: 1, unit: "pinch", name: "oregano" })
-    ).toBeCloseTo(0.08, 5);
-    expect(
-      resolvePieceGrams({ quantity: 1, unit: "dash", name: "kosher salt" })
-    ).toBeCloseTo(0.44, 5);
+    expect(resolvePieceGrams({ quantity: 1, unit: "pinch", name: "salt" })).toBeCloseTo(0.36, 5);
+    expect(resolvePieceGrams({ quantity: 1, unit: "pinch", name: "oregano" })).toBeCloseTo(0.08, 5);
+    expect(resolvePieceGrams({ quantity: 1, unit: "dash", name: "kosher salt" })).toBeCloseTo(
+      0.44,
+      5
+    );
   });
 
   it("uses ground black pepper density, not bell pepper", () => {
@@ -477,15 +478,15 @@ describe("conversion keys", () => {
   });
 
   it("keeps conversions working for dropdown labels", () => {
-    expect(convertIngredient({ quantity: 1, unit: "cup", name: "carrot" }, "g", metric).quantity).toBe(
-      199
-    );
-    expect(convertIngredient({ quantity: 2, unit: "", name: "capsicum" }, "g", metric).quantity).toBe(
-      300
-    );
-    expect(convertIngredient({ quantity: 100, unit: "g", name: "prawn" }, "ml", metric).quantity).toBe(
-      178
-    );
+    expect(
+      convertIngredient({ quantity: 1, unit: "cup", name: "carrot" }, "g", metric).quantity
+    ).toBe(199);
+    expect(
+      convertIngredient({ quantity: 2, unit: "", name: "capsicum" }, "g", metric).quantity
+    ).toBe(300);
+    expect(
+      convertIngredient({ quantity: 100, unit: "g", name: "prawn" }, "ml", metric).quantity
+    ).toBe(178);
     expect(
       convertIngredient({ quantity: 1, unit: "", name: "water chestnut" }, "g", metric).quantity
     ).toBe(10);
@@ -572,9 +573,7 @@ describe("conversion keys", () => {
     expect(defaultProduceSize({ name: "tomato", unit: "can" })).toBeUndefined();
     expect(defaultProduceSize({ name: "tomato", unit: "jar" })).toBeUndefined();
     expect(defaultProduceSize({ name: "garlic", unit: "clove" })).toBe("medium");
-    expect(
-      defaultProduceSize({ name: "egg", unit: "", size: "large" })
-    ).toBeUndefined();
+    expect(defaultProduceSize({ name: "egg", unit: "", size: "large" })).toBeUndefined();
     expect(defaultProduceSize({ name: "salt", unit: "pinch" })).toBeUndefined();
     expect(
       isProduceIngredient({

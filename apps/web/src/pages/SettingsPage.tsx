@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import type { CupStandard, MeasurementPrefs } from "@ladlelink/types";
 import { DEFAULT_MEASUREMENT_PREFS } from "@ladlelink/types";
 import { usesAustralianMeasures } from "@ladlelink/units";
-import { useAuth } from "../api";
+import { useAuth } from "../auth-context";
 import { isDemoMode } from "../data/demo";
 import { resetDemoData } from "../data/demo-repository";
 import { useRepository } from "../data/RepositoryProvider";
@@ -168,7 +168,8 @@ export function SettingsPage() {
   }
 
   async function onResetDemo() {
-    if (!window.confirm("Delete every recipe saved in this browser? This cannot be undone.")) return;
+    if (!window.confirm("Delete every recipe saved in this browser? This cannot be undone."))
+      return;
     await resetDemoData();
     window.location.reload();
   }
@@ -177,9 +178,7 @@ export function SettingsPage() {
     <main className="panel">
       <div className="hero-block">
         <h1 className="page-title">Settings</h1>
-        <p className="lede">
-          Measurement defaults, data source, and one-click export/import for portability.
-        </p>
+        <p className="lede">Units, your data, and backups.</p>
       </div>
 
       {native && (
@@ -230,7 +229,12 @@ export function SettingsPage() {
                     : "No folder linked yet"}
                 </p>
                 <div className="toolbar">
-                  <button className="btn" type="button" disabled={busy} onClick={() => void onPickFolder()}>
+                  <button
+                    className="btn"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void onPickFolder()}
+                  >
                     Pick folder
                   </button>
                   {folderName && (
@@ -248,13 +252,28 @@ export function SettingsPage() {
             )}
 
             <div className="toolbar">
-              <button className="btn" type="button" disabled={busy} onClick={() => void saveDataSource()}>
+              <button
+                className="btn"
+                type="button"
+                disabled={busy}
+                onClick={() => void saveDataSource()}
+              >
                 Save data source
               </button>
-              <button className="btn secondary" type="button" disabled={busy} onClick={() => void onTest()}>
+              <button
+                className="btn secondary"
+                type="button"
+                disabled={busy}
+                onClick={() => void onTest()}
+              >
                 Test connection
               </button>
-              <button className="btn secondary" type="button" disabled={busy} onClick={() => void onSync()}>
+              <button
+                className="btn secondary"
+                type="button"
+                disabled={busy}
+                onClick={() => void onSync()}
+              >
                 Sync now
               </button>
             </div>
@@ -262,9 +281,7 @@ export function SettingsPage() {
             {syncStatus && (
               <p className="meta">
                 Last sync:{" "}
-                {syncStatus.lastSyncAt
-                  ? new Date(syncStatus.lastSyncAt).toLocaleString()
-                  : "never"}
+                {syncStatus.lastSyncAt ? new Date(syncStatus.lastSyncAt).toLocaleString() : "never"}
                 {syncStatus.pendingConflicts > 0 && (
                   <>
                     {" · "}
@@ -316,8 +333,8 @@ export function SettingsPage() {
             Australian measures
           </label>
           <p className="meta">
-            On: 20 ml tbsp, 5 ml tsp, 250 ml cup, imperial pints and quarts. Off: US
-            measures (14.8 ml tbsp, 240 ml cup).
+            On: 20 ml tbsp, 5 ml tsp, 250 ml cup, imperial pints and quarts. Off: US measures (14.8
+            ml tbsp, 240 ml cup).
           </p>
         </div>
 
@@ -346,7 +363,7 @@ export function SettingsPage() {
             <option value="ml">ml</option>
             <option value="l">l</option>
             <option value="cup">cup</option>
-            <option value="fl_oz">fl_oz</option>
+            <option value="fl_oz">fl oz (fluid ounces)</option>
             <option value="tbsp">tbsp</option>
             <option value="tsp">tsp</option>
           </select>
@@ -384,7 +401,7 @@ export function SettingsPage() {
         </div>
 
         <button className="btn" type="submit">
-          Save measurement prefs
+          Save measurement settings
         </button>
       </form>
 
@@ -393,9 +410,9 @@ export function SettingsPage() {
           <h2 className="section-label">Demo data</h2>
           <div className="settings-grid">
             <p className="meta">
-              This public demo keeps every recipe in this browser — there is no server database,
-              and nothing you add is uploaded or shared. Use <strong>Export all recipes</strong>{" "}
-              below to save a copy to your device.
+              This public demo keeps every recipe in this browser — there is no server database, and
+              nothing you add is uploaded or shared. Use <strong>Export all recipes</strong> below
+              to save a copy to your device.
             </p>
             <button className="btn secondary" type="button" onClick={() => void onResetDemo()}>
               Clear demo data

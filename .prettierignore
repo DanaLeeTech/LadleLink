@@ -1,0 +1,13 @@
+node_modules
+dist
+build
+coverage
+apps/mobile/android
+apps/web/public
+packages/units/src/generated
+deploy
+remote
+scripts
+data
+.playwright-mcp
+docs

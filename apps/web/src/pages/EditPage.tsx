@@ -2,15 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { Ingredient, RecipeInput, RecipeSection } from "@ladlelink/types";
 import { UnitSelect } from "../components/UnitSelect";
-import {
-  IngredientNameInput,
-  MeasureAsSelect,
-} from "../components/IngredientNameInput";
+import { IngredientNameInput, MeasureAsSelect } from "../components/IngredientNameInput";
 import { QuantityInput } from "../components/QuantityInput";
-import {
-  ServingsInput,
-  type ServingsValue,
-} from "../components/ServingsInput";
+import { ServingsInput, type ServingsValue } from "../components/ServingsInput";
 import { StepsTextarea } from "../components/StepsTextarea";
 import { useRepository } from "../data/RepositoryProvider";
 import { isNotFound } from "../data/repository";
@@ -158,9 +152,7 @@ export function EditPage() {
     // Section headings are index-based: shift them down and drop the one on the removed row.
     setSections((prev) =>
       prev
-        .map((s) =>
-          s.kind === "ingredients" && s.at > index ? { ...s, at: s.at - 1 } : s
-        )
+        .map((s) => (s.kind === "ingredients" && s.at > index ? { ...s, at: s.at - 1 } : s))
         .filter((s) => !(s.kind === "ingredients" && s.at === index))
     );
   }
@@ -177,9 +169,7 @@ export function EditPage() {
     // Headings are index-based: clear step headings when the step rows changed shape,
     // and remap ingredient headings when unnamed rows are dropped on save.
     let safeSections =
-      steps.length === loadedStepCount
-        ? sections
-        : sections.filter((s) => s.kind !== "steps");
+      steps.length === loadedStepCount ? sections : sections.filter((s) => s.kind !== "steps");
     if (keptIngredients.length !== ingredients.length) {
       const rowMap = new Map<number, number>();
       ingredients.forEach((ing, i) => {
@@ -200,9 +190,7 @@ export function EditPage() {
       sourceUrl: sourceUrl.trim() || null,
     };
     try {
-      const recipe = isNew
-        ? await repo.createRecipe(input)
-        : await repo.updateRecipe(id!, input);
+      const recipe = isNew ? await repo.createRecipe(input) : await repo.updateRecipe(id!, input);
       setBaseline(current);
       navigate(`/recipes/${recipe.id}`);
     } catch (err) {
@@ -291,19 +279,14 @@ export function EditPage() {
                   includeSizes
                   aria-label="Size or unit"
                   title="Change size or unit"
-                  onChange={(value) =>
-                    updateIngredient(i, patchFromMeasureSelect(value))
-                  }
+                  onChange={(value) => updateIngredient(i, patchFromMeasureSelect(value))}
                 />
                 <IngredientNameInput
                   value={ing.name}
                   onChangeName={(name) => updateIngredient(i, { name })}
                   required={i === 0}
                 />
-                <details
-                  className="measure-advanced"
-                  open={ing.conversionKey ? true : undefined}
-                >
+                <details className="measure-advanced" open={ing.conversionKey ? true : undefined}>
                   <summary className="measure-advanced-toggle">Advanced</summary>
                   <MeasureAsSelect
                     name={ing.name}
@@ -338,13 +321,7 @@ export function EditPage() {
 
         <div className="field">
           <label htmlFor="steps">Steps</label>
-          <StepsTextarea
-            id="steps"
-            rows={10}
-            value={stepsText}
-            onChange={setStepsText}
-            required
-          />
+          <StepsTextarea id="steps" rows={10} value={stepsText} onChange={setStepsText} required />
         </div>
 
         <div className="field">

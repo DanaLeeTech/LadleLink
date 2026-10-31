@@ -2,7 +2,10 @@ import type { Ingredient, ProduceSize } from "@ladlelink/types";
 import { bestAliasScore } from "./alias-match.js";
 import { resolveConversionName } from "./conversion-key.js";
 import { canonicalizeUnit } from "./cups.js";
-import { GENERATED_PIECE_WEIGHTS, type PieceWeightEntry } from "./generated/piece-weights.generated.js";
+import {
+  GENERATED_PIECE_WEIGHTS,
+  type PieceWeightEntry,
+} from "./generated/piece-weights.generated.js";
 
 export type { PieceWeightEntry };
 export { GENERATED_PIECE_WEIGHTS };
@@ -133,16 +136,7 @@ const HAND_PIECE_OVERRIDES: PieceWeightEntry[] = [
   },
   {
     key: "herb_sprig",
-    aliases: [
-      "thyme",
-      "rosemary",
-      "sage",
-      "dill",
-      "mint",
-      "oregano",
-      "tarragon",
-      "marjoram",
-    ],
+    aliases: ["thyme", "rosemary", "sage", "dill", "mint", "oregano", "tarragon", "marjoram"],
     units: ["sprig"],
     grams: { small: 0.8, medium: 1, large: 1.3 },
   },
@@ -367,11 +361,7 @@ const HAND_PIECE_OVERRIDES: PieceWeightEntry[] = [
   },
   {
     key: "vanilla_drop",
-    aliases: [
-      "vanilla extract",
-      "pure vanilla extract",
-      "vanilla essence",
-    ],
+    aliases: ["vanilla extract", "pure vanilla extract", "vanilla essence"],
     units: ["drop"],
     grams: { small: 0.04, medium: 0.05, large: 0.06 },
   },

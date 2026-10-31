@@ -49,10 +49,13 @@ if (webDist) {
   });
 }
 
-app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(err);
-  res.status(500).json({ error: "Internal server error" });
-});
+app.use(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Express only treats a 4-argument handler as error middleware.
+  (err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+);
 
 app.listen(PORT, () => {
   console.log(`LadleLink listening on http://0.0.0.0:${PORT}`);

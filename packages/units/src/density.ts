@@ -40,24 +40,13 @@ const HAND_DENSITY_OVERRIDES: DensityEntry[] = [
   }, // ~220 g packed / cup
   {
     key: "powdered sugar",
-    aliases: [
-      "powdered sugar",
-      "icing sugar",
-      "confectioners sugar",
-      "confectioners' sugar",
-    ],
+    aliases: ["powdered sugar", "icing sugar", "confectioners sugar", "confectioners' sugar"],
     densityGPerMl: 0.5,
     kind: "dry",
   },
   {
     key: "butter",
-    aliases: [
-      "butter",
-      "unsalted butter",
-      "salted butter",
-      "softened butter",
-      "melted butter",
-    ],
+    aliases: ["butter", "unsalted butter", "salted butter", "softened butter", "melted butter"],
     densityGPerMl: 0.911,
     kind: "wet",
   },
@@ -77,38 +66,20 @@ const HAND_DENSITY_OVERRIDES: DensityEntry[] = [
   },
   {
     key: "olive oil",
-    aliases: [
-      "olive oil",
-      "extra-virgin olive oil",
-      "extra virgin olive oil",
-      "evoo",
-    ],
+    aliases: ["olive oil", "extra-virgin olive oil", "extra virgin olive oil", "evoo"],
     densityGPerMl: 0.91,
     kind: "wet",
   },
   { key: "honey", aliases: ["honey"], densityGPerMl: 1.42, kind: "wet" },
   {
     key: "milk",
-    aliases: [
-      "milk",
-      "whole milk",
-      "2% milk",
-      "skim milk",
-      "skimmed milk",
-      "low-fat milk",
-    ],
+    aliases: ["milk", "whole milk", "2% milk", "skim milk", "skimmed milk", "low-fat milk"],
     densityGPerMl: 1.03,
     kind: "wet",
   },
   {
     key: "cream",
-    aliases: [
-      "cream",
-      "heavy cream",
-      "whipping cream",
-      "heavy whipping cream",
-      "double cream",
-    ],
+    aliases: ["cream", "heavy cream", "whipping cream", "heavy whipping cream", "double cream"],
     densityGPerMl: 0.994,
     kind: "wet",
   },
@@ -152,11 +123,7 @@ const HAND_DENSITY_OVERRIDES: DensityEntry[] = [
   },
   {
     key: "vanilla extract",
-    aliases: [
-      "vanilla extract",
-      "pure vanilla extract",
-      "vanilla essence",
-    ],
+    aliases: ["vanilla extract", "pure vanilla extract", "vanilla essence"],
     densityGPerMl: 0.88,
     kind: "wet",
   },
@@ -166,17 +133,21 @@ const HAND_DENSITY_OVERRIDES: DensityEntry[] = [
     densityGPerMl: 0.5,
     kind: "dry",
   },
-  { key: "cornstarch", aliases: ["cornstarch", "corn starch", "cornflour"], densityGPerMl: 0.54, kind: "dry" },
-  { key: "cocoa", aliases: ["cocoa", "cocoa powder", "unsweetened cocoa"], densityGPerMl: 0.41, kind: "dry" },
+  {
+    key: "cornstarch",
+    aliases: ["cornstarch", "corn starch", "cornflour"],
+    densityGPerMl: 0.54,
+    kind: "dry",
+  },
+  {
+    key: "cocoa",
+    aliases: ["cocoa", "cocoa powder", "unsweetened cocoa"],
+    densityGPerMl: 0.41,
+    kind: "dry",
+  },
   {
     key: "baking soda",
-    aliases: [
-      "baking soda",
-      "bicarbonate of soda",
-      "bicarb",
-      "bicarb soda",
-      "sodium bicarbonate",
-    ],
+    aliases: ["baking soda", "bicarbonate of soda", "bicarb", "bicarb soda", "sodium bicarbonate"],
     densityGPerMl: 1.2, // ~6 g / tsp
     kind: "dry",
   },
@@ -210,7 +181,12 @@ const HAND_DENSITY_OVERRIDES: DensityEntry[] = [
     densityGPerMl: 0.1,
     kind: "other",
   },
-  { key: "rice", aliases: ["rice", "white rice", "uncooked rice"], densityGPerMl: 0.7708, kind: "dry" },
+  {
+    key: "rice",
+    aliases: ["rice", "white rice", "uncooked rice"],
+    densityGPerMl: 0.7708,
+    kind: "dry",
+  },
   { key: "oats", aliases: ["oats", "rolled oats", "oatmeal"], densityGPerMl: 0.3375, kind: "dry" },
   {
     key: "herb",

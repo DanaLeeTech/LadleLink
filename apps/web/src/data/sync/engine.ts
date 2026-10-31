@@ -132,7 +132,7 @@ export async function runSync(): Promise<SyncResult> {
         try {
           await dockerDeleteRecipe(cfg, id);
         } catch {
-          // ignore missing
+          // Already deleted elsewhere; absence is the end state we want.
         }
       }
       await dockerPushMeasurement(cfg, measurement);

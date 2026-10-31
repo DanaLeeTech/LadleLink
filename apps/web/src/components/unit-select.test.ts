@@ -38,7 +38,10 @@ describe("UnitSelect quantity labels", () => {
   it("pluralizes a countable label (6 eggs)", () => {
     const markup = html({ value: "egg", quantity: 6, allowedCountable: "egg" });
     assert.match(markup, option("egg", "eggs"));
-    assert.match(html({ value: "egg", quantity: 1, allowedCountable: "egg" }), option("egg", "egg"));
+    assert.match(
+      html({ value: "egg", quantity: 1, allowedCountable: "egg" }),
+      option("egg", "egg")
+    );
   });
 
   it("leaves edit/import selects unchanged when no amount is passed", () => {

@@ -146,7 +146,10 @@ function classifyIpv6(bytes: number[]): IpVerdict {
   if (bytes.every((b) => b === 0)) {
     return { allowed: false, reason: "Blocked IPv6 range (unspecified address)" };
   }
-  if (hasPrefix(bytes, ZERO, 128) || (bytes.slice(0, 15).every((b) => b === 0) && bytes[15] === 1)) {
+  if (
+    hasPrefix(bytes, ZERO, 128) ||
+    (bytes.slice(0, 15).every((b) => b === 0) && bytes[15] === 1)
+  ) {
     return { allowed: false, reason: "Blocked IPv6 range (loopback)" };
   }
   if ((bytes[0] & 0xfe) === 0xfc) {

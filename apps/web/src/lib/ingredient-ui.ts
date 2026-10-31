@@ -19,9 +19,7 @@ export function isSizeCompatibleUnit(unit: string): boolean {
 }
 
 /** Value for the merged size/unit select (unit wins when both exist). */
-export function measureSelectValue(
-  ing: Pick<Ingredient, "size" | "unit">
-): string {
+export function measureSelectValue(ing: Pick<Ingredient, "size" | "unit">): string {
   return ing.unit || ing.size || "";
 }
 
@@ -115,10 +113,7 @@ export function parseQuantityFieldForCommit(raw: string): {
   if (!text) return { quantity: 0, quantityMax: null };
   const parsed = parseQuantityField(raw);
   if (!isValidIngredientQuantity(parsed.quantity)) return null;
-  if (
-    parsed.quantityMax != null &&
-    !isValidIngredientQuantity(parsed.quantityMax)
-  ) {
+  if (parsed.quantityMax != null && !isValidIngredientQuantity(parsed.quantityMax)) {
     return null;
   }
   return parsed;
@@ -133,9 +128,7 @@ function formatFieldNum(n: number): string {
 /** Quantity for the line preview — fractions for spoon/cup measures. */
 function formatPreviewQuantity(ing: Ingredient): string {
   const hasRange =
-    ing.quantityMax != null &&
-    Number.isFinite(ing.quantityMax) &&
-    ing.quantityMax !== ing.quantity;
+    ing.quantityMax != null && Number.isFinite(ing.quantityMax) && ing.quantityMax !== ing.quantity;
   if (!hasRange && (!Number.isFinite(ing.quantity) || ing.quantity === 0)) {
     return "";
   }
@@ -162,9 +155,7 @@ export function softenNameCase(name: string): string {
 export function formatIngredientPreview(ing: Ingredient): string {
   const parts: string[] = [];
   const qtyForPlural =
-    ing.quantityMax != null && Number.isFinite(ing.quantityMax)
-      ? ing.quantityMax
-      : ing.quantity;
+    ing.quantityMax != null && Number.isFinite(ing.quantityMax) ? ing.quantityMax : ing.quantity;
 
   // Preview uses recipe-style fractions for cup/tsp/tbsp; the qty input stays decimal.
   const qtyText = formatPreviewQuantity(ing);

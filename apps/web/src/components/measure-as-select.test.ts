@@ -122,8 +122,7 @@ function render(name: string, conversionKey?: string): string {
 
 function parseOptions(html: string): OptionInfo[] {
   const decoded = html.replace(/&amp;/g, "&").replace(/&#x27;/g, "'");
-  const re =
-    /<optgroup label="([^"]*)">|<option value="([^"]*)"( selected="")?>([^<]*)<\/option>/g;
+  const re = /<optgroup label="([^"]*)">|<option value="([^"]*)"( selected="")?>([^<]*)<\/option>/g;
   const options: OptionInfo[] = [];
   let group = "";
   for (const match of decoded.matchAll(re)) {
@@ -159,10 +158,7 @@ describe("Measure as… dropdown", () => {
 
   it("renders combined names on the kept value, with no duplicates", () => {
     const options = parseOptions(render("zzz"));
-    assert.deepEqual(
-      [...new Set(options.map((o) => o.group))],
-      ["", ...Object.keys(EXPECTED)]
-    );
+    assert.deepEqual([...new Set(options.map((o) => o.group))], ["", ...Object.keys(EXPECTED)]);
 
     for (const [group, items] of Object.entries(EXPECTED)) {
       assert.deepEqual(
@@ -285,7 +281,10 @@ describe("Measure as… dropdown", () => {
     }
 
     const chestnut = parseOptions(render("water chestnut")).filter((o) => o.selected);
-    assert.ok(chestnut.every((o) => o.value !== "water"), "water chestnut selects water");
+    assert.ok(
+      chestnut.every((o) => o.value !== "water"),
+      "water chestnut selects water"
+    );
 
     const water = parseOptions(render("water")).filter((o) => o.selected);
     assert.equal(water.length, 1);

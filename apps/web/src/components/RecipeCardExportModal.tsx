@@ -21,12 +21,7 @@ interface Props {
   onClose: () => void;
 }
 
-export function RecipeCardExportModal({
-  recipe,
-  scaled,
-  servings,
-  onClose,
-}: Props) {
+export function RecipeCardExportModal({ recipe, scaled, servings, onClose }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
@@ -42,14 +37,10 @@ export function RecipeCardExportModal({
     [recipe, scaled, servings]
   );
 
-  const ingredientLines = useMemo(
-    () => scaled.map((ing) => formatIngredientLine(ing)),
-    [scaled]
-  );
+  const ingredientLines = useMemo(() => scaled.map((ing) => formatIngredientLine(ing)), [scaled]);
 
   const dense =
-    ingredientLines.length + recipe.steps.length > 18 ||
-    recipe.steps.some((s) => s.length > 160);
+    ingredientLines.length + recipe.steps.length > 18 || recipe.steps.some((s) => s.length > 160);
 
   useEffect(() => {
     let cancelled = false;
@@ -192,10 +183,7 @@ export function RecipeCardExportModal({
                           height={320}
                           crossOrigin="anonymous"
                         />
-                        <p
-                          className="recipe-card-qr-note"
-                          style={{ color: colors.body }}
-                        >
+                        <p className="recipe-card-qr-note" style={{ color: colors.body }}>
                           Import into LadleLink
                         </p>
                       </div>

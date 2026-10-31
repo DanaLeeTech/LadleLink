@@ -24,8 +24,7 @@ import { classifyIp, isIpLiteral } from "./ip.js";
 
 export { classifyIp, isIpLiteral } from "./ip.js";
 
-export const USER_AGENT =
-  "LadleLink/0.1 (+local; user-initiated recipe import; not a crawler)";
+export const USER_AGENT = "LadleLink/0.1 (+local; user-initiated recipe import; not a crawler)";
 
 export const DEFAULT_ALLOWED_PORTS = [80, 443];
 export const DEFAULT_MAX_URL_LENGTH = 2048;
@@ -148,7 +147,10 @@ export function parseRecipeUrl(raw: string, options: UrlGuardOptions = {}): URL 
     throw new UnsafeUrlError("unsupported-scheme", "Only http and https links are supported");
   }
   if (url.username || url.password) {
-    throw new UnsafeUrlError("credentials-not-allowed", "Links with embedded credentials are not allowed");
+    throw new UnsafeUrlError(
+      "credentials-not-allowed",
+      "Links with embedded credentials are not allowed"
+    );
   }
   const host = url.hostname.replace(/^\[|\]$/g, "");
   if (!host) {
@@ -349,14 +351,20 @@ export async function fetchHtmlSafely(
 
     if (isRedirectStatus(response.status)) {
       if (!response.location) {
-        throw new UnsafeUrlError("request-failed", `HTTP ${response.status} without a Location header`);
+        throw new UnsafeUrlError(
+          "request-failed",
+          `HTTP ${response.status} without a Location header`
+        );
       }
       const next = new URL(response.location, url);
       current = next.href;
       continue;
     }
     if (response.status < 200 || response.status >= 300) {
-      throw new UnsafeUrlError("request-failed", `Failed to fetch recipe page: HTTP ${response.status}`);
+      throw new UnsafeUrlError(
+        "request-failed",
+        `Failed to fetch recipe page: HTTP ${response.status}`
+      );
     }
     if (!isHtmlContentType(response.contentType)) {
       throw new UnsafeUrlError(
@@ -372,7 +380,10 @@ export async function fetchHtmlSafely(
       contentType: response.contentType,
     };
   }
-  throw new UnsafeUrlError("too-many-redirects", `That link redirected more than ${maxRedirects} times`);
+  throw new UnsafeUrlError(
+    "too-many-redirects",
+    `That link redirected more than ${maxRedirects} times`
+  );
 }
 
 const CLAMAV_CHUNK_SIZE = 64 * 1024;

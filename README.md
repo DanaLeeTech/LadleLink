@@ -11,6 +11,12 @@ LadleLink is a local-first recipe manager you run yourself — one Docker contai
 3. **Recipe URL import.** Paste a recipe link; structured data, microdata and a plain-text fallback are tried in order.
 4. **Tags, notes, source links, JSON export/import.**
 
+## Screenshots
+
+![A recipe with portions scaled up](docs/screenshots/scaled-recipe.png)
+
+![Import review before saving](docs/screenshots/import-review.png)
+
 ## Your recipes stay on your machine
 
 Self-host it and everything — the SQLite database and photos — lives in a folder on your machine. There is no account and no cloud service. It runs anywhere Docker does: a home server, NAS, or Raspberry Pi.
@@ -69,6 +75,11 @@ npm run build:demo -w @ladlelink/web
 ## Android
 
 An Android app (Capacitor) is in development and will be released later.
+
+## Known limits
+
+- Some recipe sites block the public import readers, so URL import can fail there. Pasting the recipe text still works. A self-hosted instance fetches pages itself, but a site may still refuse bots.
+- The Android app is in development and not released.
 
 ## Layout
 

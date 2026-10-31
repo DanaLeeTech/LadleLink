@@ -1,4 +1,1 @@
-export {
-  formatStepsForEditor,
-  parseStepsFromEditor,
-} from "@ladlelink/parser";
+export { formatStepsForEditor, parseStepsFromEditor } from "@ladlelink/parser";

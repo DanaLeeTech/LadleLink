@@ -1,9 +1,4 @@
-import type {
-  Ingredient,
-  MeasurementPrefs,
-  ProduceSize,
-  Recipe,
-} from "@ladlelink/types";
+import type { Ingredient, MeasurementPrefs, ProduceSize, Recipe } from "@ladlelink/types";
 import { DEFAULT_MEASUREMENT_PREFS } from "@ladlelink/types";
 import {
   applyDisplayPrefs,
@@ -67,8 +62,7 @@ export function scaleIngredient(
     });
     if (perAuthored != null && perAuthored > 0) {
       const baseGrams = quantity * perAuthored;
-      const baseGramsMax =
-        quantityMax != null ? quantityMax * perAuthored : undefined;
+      const baseGramsMax = quantityMax != null ? quantityMax * perAuthored : undefined;
 
       if (targetUnit) {
         const asGrams: Ingredient = {
@@ -94,10 +88,7 @@ export function scaleIngredient(
         if (converted.quantityMax != null) result.quantityMax = converted.quantityMax;
         else delete result.quantityMax;
         // When showing mass/volume, drop size from the row label (dropdown shows unit).
-        if (
-          unitFamily(converted.unit) === "mass" ||
-          unitFamily(converted.unit) === "volume"
-        ) {
+        if (unitFamily(converted.unit) === "mass" || unitFamily(converted.unit) === "volume") {
           delete result.size;
         }
         return result;
@@ -112,11 +103,9 @@ export function scaleIngredient(
       });
       if (perDisplay != null && perDisplay > 0) {
         const count = baseGrams / perDisplay;
-        const countMax =
-          baseGramsMax != null ? baseGramsMax / perDisplay : undefined;
+        const countMax = baseGramsMax != null ? baseGramsMax / perDisplay : undefined;
         const rounded = roundQuantity(count, "piece");
-        const roundedMax =
-          countMax != null ? roundQuantity(countMax, "piece") : undefined;
+        const roundedMax = countMax != null ? roundQuantity(countMax, "piece") : undefined;
         const result: ScaledIngredient = {
           ...ingredient,
           quantity: rounded,

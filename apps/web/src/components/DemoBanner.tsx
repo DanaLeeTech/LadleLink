@@ -19,8 +19,7 @@ export function DemoBanner() {
     const element = ref.current;
     if (!element) return;
     const root = document.documentElement;
-    const apply = () =>
-      root.style.setProperty("--demo-banner-height", `${element.offsetHeight}px`);
+    const apply = () => root.style.setProperty("--demo-banner-height", `${element.offsetHeight}px`);
     apply();
     const observer = new ResizeObserver(apply);
     observer.observe(element);

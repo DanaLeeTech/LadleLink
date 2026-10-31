@@ -30,7 +30,7 @@ export function ShareListener() {
         const url = await safConsumeSharedUrl();
         if (url) await goImport(url);
       } catch {
-        // bridge may be unavailable during first paint
+        // The bridge isn't ready during first paint; a share this early is dropped.
       }
     }
 

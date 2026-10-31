@@ -116,8 +116,7 @@ function validateRecipeInput(body: unknown): RecipeInput | { error: string } {
     notes: typeof b.notes === "string" ? b.notes : b.notes === null ? null : undefined,
     photoPath:
       typeof b.photoPath === "string" ? b.photoPath : b.photoPath === null ? null : undefined,
-    imageUrl:
-      typeof b.imageUrl === "string" ? b.imageUrl : b.imageUrl === null ? null : undefined,
+    imageUrl: typeof b.imageUrl === "string" ? b.imageUrl : b.imageUrl === null ? null : undefined,
     sourceUrl:
       typeof b.sourceUrl === "string" ? b.sourceUrl : b.sourceUrl === null ? null : undefined,
   };

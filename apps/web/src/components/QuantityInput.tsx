@@ -1,8 +1,5 @@
 import { useRef, useState } from "react";
-import {
-  formatQuantityField,
-  parseQuantityFieldForCommit,
-} from "../lib/ingredient-ui";
+import { formatQuantityField, parseQuantityFieldForCommit } from "../lib/ingredient-ui";
 
 /** Tap-to-insert fractions for the Android keyboard, which has no fraction keys. */
 const FRACTION_CHIPS = ["½", "¼", "¾", "⅓"];
@@ -14,11 +11,7 @@ interface QuantityInputProps {
 }
 
 /** Qty field that keeps a draft string while focused so `.`/`,`/`/` and `-` can be typed. */
-export function QuantityInput({
-  quantity,
-  quantityMax,
-  onCommit,
-}: QuantityInputProps) {
+export function QuantityInput({ quantity, quantityMax, onCommit }: QuantityInputProps) {
   const ing = {
     quantity,
     quantityMax: quantityMax ?? undefined,

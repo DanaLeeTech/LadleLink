@@ -78,7 +78,10 @@ describe("importRecipeInBrowser", () => {
   it("tries another reader when the first returns a blank or empty shell", async () => {
     for (const blank of ["", "<!doctype html><html><body></body></html>"]) {
       const calls: string[] = [];
-      const fetchImpl = fakeFetch((url) => (url.includes("r.jina.ai") ? blank : RECIPE_HTML), calls);
+      const fetchImpl = fakeFetch(
+        (url) => (url.includes("r.jina.ai") ? blank : RECIPE_HTML),
+        calls
+      );
       const recipe = await importRecipeInBrowser("https://example.com/pancakes", fetchImpl);
       assert.equal(recipe.title, "Test Pancakes");
       assert.ok(calls.some((url) => url.includes("allorigins")));
@@ -204,7 +207,10 @@ describe("importRecipeInBrowser", () => {
 
   it("parses a Coles-style page with servings and clean steps", async () => {
     const fetchImpl = fakeFetch(() => fixture("coles-style.html"));
-    const recipe = await importRecipeInBrowser("https://www.coles.com.au/recipe/cookies", fetchImpl);
+    const recipe = await importRecipeInBrowser(
+      "https://www.coles.com.au/recipe/cookies",
+      fetchImpl
+    );
     assert.equal(recipe.servings, 12);
     assert.equal(recipe.steps[0], "Preheat the oven to 180°C and line two trays.");
     assert.equal(recipe.sections?.[0].title, "For the dough");
@@ -234,9 +240,7 @@ describe("importRecipeInBrowser", () => {
     const fetchImpl = fakeFetch((url, init) => {
       if (!url.includes("r.jina.ai")) return JS_SHELL;
       // The HTML attempt asks for HTML; the fallback keeps jina's markdown default.
-      return init?.headers && "X-Return-Format" in (init.headers as object)
-        ? JS_SHELL
-        : MARKDOWN;
+      return init?.headers && "X-Return-Format" in (init.headers as object) ? JS_SHELL : MARKDOWN;
     });
     const recipe = await importRecipeInBrowser("https://example.com/brownies", fetchImpl);
     assert.equal(recipe.title, "Best Brownies");

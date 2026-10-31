@@ -13,13 +13,14 @@ const read = (name: string) => readFileSync(join(fixtures, name), "utf8");
 
 describe("page import: real recipe sites", () => {
   it("parses a RecipeTin-style @graph page without rejecting it", () => {
-    const recipe = parseRecipeHtml(read("recipetin-style.html"), "https://www.recipetineats.com/beef-ragu/");
+    const recipe = parseRecipeHtml(
+      read("recipetin-style.html"),
+      "https://www.recipetineats.com/beef-ragu/"
+    );
 
     expect(recipe.title).toBe("Beef Ragu");
     expect(recipe.servings).toBe(4);
-    expect(recipe.photoUrl).toBe(
-      "https://www.recipetineats.com/wp-content/uploads/beef-ragu.jpg"
-    );
+    expect(recipe.photoUrl).toBe("https://www.recipetineats.com/wp-content/uploads/beef-ragu.jpg");
     expect(recipe.ingredients).toHaveLength(6);
     expect(recipe.ingredients[1]).toMatchObject({ quantity: 500, unit: "g" });
     expect(recipe.ingredients[1].name).toMatch(/beef chuck/);
@@ -31,7 +32,10 @@ describe("page import: real recipe sites", () => {
   });
 
   it("normalises taste.com.au gm weights to grams", () => {
-    const recipe = parseRecipeHtml(read("taste-style.html"), "https://www.taste.com.au/recipes/beef-ragu");
+    const recipe = parseRecipeHtml(
+      read("taste-style.html"),
+      "https://www.taste.com.au/recipes/beef-ragu"
+    );
 
     expect(recipe.title).toBe("Slow cooked beef ragu");
     expect(recipe.servings).toBe(4);

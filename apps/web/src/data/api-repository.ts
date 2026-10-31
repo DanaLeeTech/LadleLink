@@ -15,8 +15,7 @@ import type {
   SyncResult,
   SyncStatus,
 } from "./repository";
-
-const TOKEN_KEY = "ff-auth-token";
+import { LEGACY_TOKEN_KEY, readToken, TOKEN_KEY } from "../auth-context";
 
 async function api<T>(
   path: string,
@@ -26,7 +25,7 @@ async function api<T>(
   if (!headers.has("Content-Type") && options.body) {
     headers.set("Content-Type", "application/json");
   }
-  const token = options.token ?? localStorage.getItem(TOKEN_KEY) ?? "";
+  const token = options.token ?? readToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   const base = (options.baseUrl ?? "").replace(/\/$/, "");
@@ -38,7 +37,7 @@ async function api<T>(
       const data = await res.json();
       if (data?.error) message = data.error;
     } catch {
-      // ignore
+      // Response body isn't JSON; keep the HTTP status text above.
     }
     throw new Error(message);
   }
@@ -84,11 +83,14 @@ export function createApiRepository(): RecipeRepository {
     setMode: async () => undefined,
     getDockerConfig: async (): Promise<DockerConfig> => ({
       baseUrl: "",
-      authToken: localStorage.getItem(TOKEN_KEY) ?? "",
+      authToken: readToken(),
     }),
     setDockerConfig: async (cfg: DockerConfig) => {
       if (cfg.authToken) localStorage.setItem(TOKEN_KEY, cfg.authToken);
-      else localStorage.removeItem(TOKEN_KEY);
+      else {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(LEGACY_TOKEN_KEY);
+      }
     },
     pickSafFolder: unsupported,
     getSafFolder: async () => null as SafFolderInfo | null,

@@ -2,7 +2,12 @@ import type { ParsedRecipe } from "@ladlelink/types";
 import { parseJsonLd } from "./jsonld.js";
 import { parseMicrodata } from "./microdata.js";
 import { parseHeuristic } from "./heuristic.js";
-import { cleanRecipeText, cleanRecipeTitle, parseIngredientLine, stripStepNumber } from "./ingredient-line.js";
+import {
+  cleanRecipeText,
+  cleanRecipeTitle,
+  parseIngredientLine,
+  stripStepNumber,
+} from "./ingredient-line.js";
 
 export {
   parseIngredientLine,
@@ -36,8 +41,7 @@ export class NotARecipeError extends Error {
   }
 }
 
-export const USER_AGENT =
-  "LadleLink/0.1 (+local; user-initiated recipe import; not a crawler)";
+export const USER_AGENT = "LadleLink/0.1 (+local; user-initiated recipe import; not a crawler)";
 
 export const DEFAULT_FETCH_TIMEOUT_MS = 10_000;
 
@@ -97,9 +101,7 @@ export function parseRecipeHtml(html: string, sourceUrl: string): ParsedRecipe {
     throw new NotARecipeError("Could not extract ingredients from this page");
   }
   parsed.title = cleanRecipeTitle(cleanRecipeText(parsed.title));
-  parsed.steps = parsed.steps
-    .map((step) => stripStepNumber(cleanRecipeText(step)))
-    .filter(Boolean);
+  parsed.steps = parsed.steps.map((step) => stripStepNumber(cleanRecipeText(step))).filter(Boolean);
   if (parsed.notes) parsed.notes = cleanRecipeText(parsed.notes);
   if (parsed.sections) {
     const limits = { ingredients: parsed.ingredients.length, steps: parsed.steps.length };

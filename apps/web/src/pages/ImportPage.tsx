@@ -3,16 +3,9 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { parseRecipeText } from "@ladlelink/parser";
 import type { Ingredient, ParsedRecipe } from "@ladlelink/types";
 import { UnitSelect } from "../components/UnitSelect";
-import {
-  IngredientNameInput,
-  MeasureAsSelect,
-} from "../components/IngredientNameInput";
+import { IngredientNameInput, MeasureAsSelect } from "../components/IngredientNameInput";
 import { QuantityInput } from "../components/QuantityInput";
-import {
-  isValidServings,
-  ServingsInput,
-  type ServingsValue,
-} from "../components/ServingsInput";
+import { isValidServings, ServingsInput, type ServingsValue } from "../components/ServingsInput";
 import { StepsTextarea } from "../components/StepsTextarea";
 import { useRepository } from "../data/RepositoryProvider";
 import { formatStepsForEditor, parseStepsFromEditor } from "../lib/steps-text";
@@ -55,9 +48,7 @@ export function ImportPage() {
   const abortRef = useRef<AbortController | null>(null);
 
   function applyDraft(parsed: ParsedRecipe) {
-    const ingredients = parsed.ingredients.length
-      ? parsed.ingredients
-      : [emptyIngredient()];
+    const ingredients = parsed.ingredients.length ? parsed.ingredients : [emptyIngredient()];
     setDraft({ ...parsed, ingredients });
     setStepGroups(
       splitStepsBySection(parsed.steps, parsed.sections).map((group) => ({
@@ -198,9 +189,7 @@ export function ImportPage() {
       ...draft,
       ingredients: draft.ingredients.filter((_, i) => i !== index),
       sections: draft.sections
-        ?.map((s) =>
-          s.kind === "ingredients" && s.at > index ? { ...s, at: s.at - 1 } : s
-        )
+        ?.map((s) => (s.kind === "ingredients" && s.at > index ? { ...s, at: s.at - 1 } : s))
         .filter((s) => !(s.kind === "ingredients" && s.at === index)),
     });
   }
@@ -214,9 +203,7 @@ export function ImportPage() {
     setSaving(true);
     setError(null);
     try {
-      const ingredients = draft.ingredients.filter(
-        (ing) => ing.name.trim() || ing.quantity
-      );
+      const ingredients = draft.ingredients.filter((ing) => ing.name.trim() || ing.quantity);
       const merged = mergeStepSections(
         stepGroups.map((group) => ({
           title: group.title,
@@ -333,13 +320,7 @@ export function ImportPage() {
         <form className="form-grid" onSubmit={onParseImage}>
           <div className="field">
             <label htmlFor="recipe-image">Recipe image</label>
-            <input
-              id="recipe-image"
-              name="recipe-image"
-              type="file"
-              accept="image/*"
-              required
-            />
+            <input id="recipe-image" name="recipe-image" type="file" accept="image/*" required />
             <p className="lede" style={{ marginTop: "0.35rem", fontSize: "0.95rem" }}>
               LadleLink cards restore exactly via embedded data or QR. Other photos use on-device
               OCR.
@@ -425,18 +406,13 @@ export function ImportPage() {
                     includeSizes
                     aria-label="Size or unit"
                     title="Change size or unit"
-                    onChange={(value) =>
-                      updateIngredient(i, patchFromMeasureSelect(value))
-                    }
+                    onChange={(value) => updateIngredient(i, patchFromMeasureSelect(value))}
                   />
                   <IngredientNameInput
                     value={ing.name}
                     onChangeName={(name) => updateIngredient(i, { name })}
                   />
-                  <details
-                    className="measure-advanced"
-                    open={ing.conversionKey ? true : undefined}
-                  >
+                  <details className="measure-advanced" open={ing.conversionKey ? true : undefined}>
                     <summary className="measure-advanced-toggle">Advanced</summary>
                     <MeasureAsSelect
                       name={ing.name}

@@ -43,9 +43,7 @@ describe("resolvePhotoUrl", () => {
     expect(resolvePhotoUrl("/content/dam/coles/x.jpg", base)).toBe(
       "https://example.com/content/dam/coles/x.jpg"
     );
-    expect(resolvePhotoUrl("//img.example.com/x.jpg", base)).toBe(
-      "https://img.example.com/x.jpg"
-    );
+    expect(resolvePhotoUrl("//img.example.com/x.jpg", base)).toBe("https://img.example.com/x.jpg");
   });
 
   it("keeps the original when there is no usable base", () => {
@@ -115,10 +113,7 @@ describe("extractors resolve photo URLs against the page", () => {
     );
     expect(absolute?.photoUrl).toBe("https://img.test/cake.jpg");
 
-    const empty = parseJsonLd(
-      jsonLdPage({ ...baseRecipe, image: "" }),
-      "https://example.com/cake"
-    );
+    const empty = parseJsonLd(jsonLdPage({ ...baseRecipe, image: "" }), "https://example.com/cake");
     expect(empty?.photoUrl).toBeNull();
 
     const none = parseJsonLd(jsonLdPage({ ...baseRecipe, image: [] }), "https://example.com/cake");

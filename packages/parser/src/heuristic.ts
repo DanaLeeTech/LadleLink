@@ -206,7 +206,8 @@ export function parseHeuristic(html: string, sourceUrl: string): ParsedRecipe | 
   );
 
   const sections = [...ingredients.sections, ...steps.sections].filter(
-    (section) => section.at <= (section.kind === "ingredients" ? ingredients.items.length : steps.items.length)
+    (section) =>
+      section.at <= (section.kind === "ingredients" ? ingredients.items.length : steps.items.length)
   );
 
   const recipe: ParsedRecipe = {

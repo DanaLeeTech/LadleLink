@@ -172,7 +172,9 @@ textarea {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: background 120ms ease, color 120ms ease;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
 }
 
 .nav-menu-toggle:focus {
@@ -252,7 +254,9 @@ textarea {
   justify-content: center;
   justify-self: end;
   flex-shrink: 0;
-  transition: background 120ms ease, color 120ms ease;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
 }
 
 .theme-toggle:focus {
@@ -398,7 +402,10 @@ textarea {
   color: var(--paper);
   padding: 0.65rem 1rem;
   cursor: pointer;
-  transition: transform 160ms ease, background 160ms ease, opacity 160ms ease;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    opacity 160ms ease;
 }
 
 .btn:hover {
@@ -452,7 +459,9 @@ textarea {
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem 0.15rem;
-  transition: color 160ms ease, padding-left 160ms ease;
+  transition:
+    color 160ms ease,
+    padding-left 160ms ease;
 }
 
 .recipe-list a:hover {
@@ -707,10 +716,15 @@ textarea {
   min-width: 4.5rem;
   width: auto;
   max-width: 8rem;
-  background-image: linear-gradient(45deg, transparent 50%, var(--accent-green) 50%),
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--accent-green) 50%),
     linear-gradient(135deg, var(--accent-green) 50%, transparent 50%);
-  background-position: calc(100% - 12px) calc(50% + 1px), calc(100% - 7px) calc(50% + 1px);
-  background-size: 5px 5px, 5px 5px;
+  background-position:
+    calc(100% - 12px) calc(50% + 1px),
+    calc(100% - 7px) calc(50% + 1px);
+  background-size:
+    5px 5px,
+    5px 5px;
   background-repeat: no-repeat;
 }
 
@@ -896,6 +910,14 @@ textarea {
 .field label {
   font-weight: 600;
   font-size: 0.92rem;
+}
+
+/* .field input is width:100%; a checkbox needs its own size to sit beside its text. */
+.field label > input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  margin-right: 0.4rem;
+  vertical-align: middle;
 }
 
 .error {
@@ -1188,4 +1210,3 @@ textarea {
 .demo-banner-text {
   opacity: 0.92;
 }
-

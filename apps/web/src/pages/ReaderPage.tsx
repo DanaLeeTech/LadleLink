@@ -4,11 +4,7 @@ import type { MeasurementPrefs, ProduceSize, Recipe } from "@ladlelink/types";
 import { DEFAULT_MEASUREMENT_PREFS } from "@ladlelink/types";
 import { scaleRecipeIngredients } from "@ladlelink/scaling";
 import { canonicalizeUnit, pluralProduceName, pluralUnitLabel, unitFamily } from "@ladlelink/units";
-import {
-  isValidServings,
-  ServingsInput,
-  type ServingsValue,
-} from "../components/ServingsInput";
+import { isValidServings, ServingsInput, type ServingsValue } from "../components/ServingsInput";
 import { isProduceSize, UnitSelect } from "../components/UnitSelect";
 import { useRepository } from "../data/RepositoryProvider";
 import { RecipeCardExportModal } from "../components/RecipeCardExportModal";
@@ -373,9 +369,7 @@ export function ReaderPage() {
       )}
 
       <div className="servings-row">
-        <label htmlFor="servings">
-          Servings: {isValidServings(servings) ? servings : "—"}
-        </label>
+        <label htmlFor="servings">Servings: {isValidServings(servings) ? servings : "—"}</label>
         <input
           id="servings"
           type="range"
@@ -441,9 +435,7 @@ export function ReaderPage() {
                 <h3 className="section-label">{sectionTitle("ingredients", i)}</h3>
               )}
               <div className="ingredient-main ingredient-main--reader">
-                {ing.displayQuantity ? (
-                  <span className="qty">{ing.displayQuantity}</span>
-                ) : null}
+                {ing.displayQuantity ? <span className="qty">{ing.displayQuantity}</span> : null}
                 {showSize ? (
                   <span className="size-label">
                     {!lineStartsWithQty ? capitalizeFirst(ing.size!) : ing.size}
@@ -451,9 +443,7 @@ export function ReaderPage() {
                 ) : null}
                 {fixedUnit ? (
                   <span className="unit-label">
-                    {!lineStartsWithQty && !showSize
-                      ? capitalizeFirst(unitLabel)
-                      : unitLabel}
+                    {!lineStartsWithQty && !showSize ? capitalizeFirst(unitLabel) : unitLabel}
                   </span>
                 ) : null}
                 {showMeasure ? (
@@ -470,9 +460,7 @@ export function ReaderPage() {
                     }
                     title={includeSizes ? "Change size or unit" : "Change unit"}
                     aria-label={
-                      includeSizes
-                        ? `Size or unit for ${ing.name}`
-                        : `Unit for ${ing.name}`
+                      includeSizes ? `Size or unit for ${ing.name}` : `Unit for ${ing.name}`
                     }
                     onChange={(value) => onMeasureChange(i, value, includeSizes)}
                   />

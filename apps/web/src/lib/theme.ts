@@ -12,7 +12,7 @@ export function readStoredTheme(): Theme | null {
     const value = localStorage.getItem(THEME_STORAGE_KEY);
     if (value === "light" || value === "dark") return value;
   } catch {
-    /* ignore */
+    // localStorage can throw when storage is blocked; fall back to the system theme.
   }
   return null;
 }
@@ -29,7 +29,7 @@ export function persistTheme(theme: Theme): void {
   try {
     localStorage.setItem(THEME_STORAGE_KEY, theme);
   } catch {
-    /* ignore */
+    // Storage can throw when blocked; the theme still applies for this session.
   }
 }
 

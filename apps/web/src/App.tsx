@@ -10,13 +10,7 @@ import { EditPage } from "./pages/EditPage";
 import { ImportPage } from "./pages/ImportPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ConflictPage } from "./pages/ConflictPage";
-import {
-  applyTheme,
-  getInitialTheme,
-  persistTheme,
-  toggleTheme,
-  type Theme,
-} from "./lib/theme";
+import { applyTheme, getInitialTheme, persistTheme, toggleTheme, type Theme } from "./lib/theme";
 
 /** Recipe reader with a boundary so one damaged recipe cannot blank the page. */
 function ReaderRoute() {
@@ -107,58 +101,58 @@ export function App() {
       <div className="app-shell">
         <ShareListener />
         <header className="topbar">
-        <div className="topbar-start" ref={navRef}>
-          <button
-            type="button"
-            className="nav-menu-toggle"
-            aria-label={navOpen ? "Close menu" : "Open menu"}
-            aria-expanded={navOpen}
-            aria-controls={navMenuId}
-            onClick={() => setNavOpen((open) => !open)}
-          >
-            {navOpen ? (
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6 6.4 5z" />
-              </svg>
-            ) : (
-              <span className="nav-menu-icon" aria-hidden="true" />
-            )}
-          </button>
-          <nav
-            id={navMenuId}
-            className={`nav-menu${navOpen ? " is-open" : ""}`}
-            aria-hidden={!navOpen}
-          >
-            <Link to="/" onClick={closeNav}>
-              Recipes
-            </Link>
-            <Link to="/new" onClick={closeNav}>
-              Add
-            </Link>
-            <Link to="/import" onClick={closeNav}>
-              Import
-            </Link>
-            <Link to="/settings" onClick={closeNav}>
-              Settings
-            </Link>
-          </nav>
-        </div>
-        <Link to="/" className="brand" onClick={closeNav}>
-          <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" className="brand-logo" />
-          LadleLink
-        </Link>
-        <ThemeToggle theme={theme} onToggle={handleToggleTheme} />
-      </header>
-      <Routes>
-        <Route path="/" element={<ListPage />} />
-        <Route path="/recipes/:id" element={<ReaderRoute />} />
-        <Route path="/recipes/:id/edit" element={<EditPage />} />
-        <Route path="/new" element={<EditPage />} />
-        <Route path="/import" element={<ImportPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/conflicts" element={<ConflictPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <div className="topbar-start" ref={navRef}>
+            <button
+              type="button"
+              className="nav-menu-toggle"
+              aria-label={navOpen ? "Close menu" : "Open menu"}
+              aria-expanded={navOpen}
+              aria-controls={navMenuId}
+              onClick={() => setNavOpen((open) => !open)}
+            >
+              {navOpen ? (
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6 6.4 5z" />
+                </svg>
+              ) : (
+                <span className="nav-menu-icon" aria-hidden="true" />
+              )}
+            </button>
+            <nav
+              id={navMenuId}
+              className={`nav-menu${navOpen ? " is-open" : ""}`}
+              aria-hidden={!navOpen}
+            >
+              <Link to="/" onClick={closeNav}>
+                Recipes
+              </Link>
+              <Link to="/new" onClick={closeNav}>
+                Add
+              </Link>
+              <Link to="/import" onClick={closeNav}>
+                Import
+              </Link>
+              <Link to="/settings" onClick={closeNav}>
+                Settings
+              </Link>
+            </nav>
+          </div>
+          <Link to="/" className="brand" onClick={closeNav}>
+            <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" className="brand-logo" />
+            LadleLink
+          </Link>
+          <ThemeToggle theme={theme} onToggle={handleToggleTheme} />
+        </header>
+        <Routes>
+          <Route path="/" element={<ListPage />} />
+          <Route path="/recipes/:id" element={<ReaderRoute />} />
+          <Route path="/recipes/:id/edit" element={<EditPage />} />
+          <Route path="/new" element={<EditPage />} />
+          <Route path="/import" element={<ImportPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/conflicts" element={<ConflictPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </div>
     </>
   );

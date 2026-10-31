@@ -21,11 +21,7 @@ async function fileToImageData(file: File): Promise<{
 }> {
   const buf = new Uint8Array(await file.arrayBuffer());
   const isPng =
-    buf.length >= 8 &&
-    buf[0] === 0x89 &&
-    buf[1] === 0x50 &&
-    buf[2] === 0x4e &&
-    buf[3] === 0x47;
+    buf.length >= 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47;
 
   const blob = new Blob([Uint8Array.from(buf)], {
     type: file.type || (isPng ? "image/png" : "image/*"),
@@ -60,13 +56,7 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
-function cropImageData(
-  source: ImageData,
-  x: number,
-  y: number,
-  w: number,
-  h: number
-): ImageData {
+function cropImageData(source: ImageData, x: number, y: number, w: number, h: number): ImageData {
   const sx = Math.max(0, Math.floor(x));
   const sy = Math.max(0, Math.floor(y));
   const sw = Math.min(Math.floor(w), source.width - sx);
@@ -262,19 +252,11 @@ export async function importRecipeFromImage(
     // Tall phone screenshots: also OCR the caption band and keep the better parse
     const isPortrait = height >= width * 1.35;
     const fullLooksWeak =
-      !fromFull ||
-      fromFull.ingredients.length < 2 ||
-      scoreParsedRecipe(fromFull) < 25;
+      !fromFull || fromFull.ingredients.length < 2 || scoreParsedRecipe(fromFull) < 25;
 
     if (isPortrait || fullLooksWeak) {
       onProgress?.("Trying caption area…");
-      const captionBand = cropImageData(
-        imageData,
-        0,
-        height * 0.45,
-        width,
-        height * 0.55
-      );
+      const captionBand = cropImageData(imageData, 0, height * 0.45, width, height * 0.55);
       const captionBlob = await imageDataToPngBlob(captionBand);
       const captionText = await recognize(captionBlob);
       texts.push(captionText);

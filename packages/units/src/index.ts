@@ -14,13 +14,7 @@ import {
   unitFamily,
   volumeUnitToMl,
 } from "./cups.js";
-import {
-  conversionCatalogLabels,
-  conversionKeyDiffersFromName,
-  inferConversionKey,
-  resolveConversionName,
-  suggestConversionKey,
-} from "./conversion-key.js";
+import { resolveConversionName } from "./conversion-key.js";
 import { resolveDensity } from "./density.js";
 import { formatQuantity, roundQuantity } from "./format.js";
 import { formatQuantityRange } from "./format-range.js";
@@ -60,11 +54,7 @@ export { formatQuantity, roundQuantity } from "./format.js";
 export { formatQuantityRange } from "./format-range.js";
 export { pluralUnitLabel, pluralProduceName, singularizeName } from "./pluralize.js";
 export { defaultProduceSize, isProduceIngredient } from "./produce.js";
-export {
-  resolvePieceGrams,
-  lookupPieceWeight,
-  GENERATED_PIECE_WEIGHTS,
-} from "./piece-weights.js";
+export { resolvePieceGrams, lookupPieceWeight, GENERATED_PIECE_WEIGHTS } from "./piece-weights.js";
 export { GENERATED_DENSITY_TABLE } from "./generated/density.generated.js";
 export {
   conversionCatalogLabels,
@@ -80,10 +70,7 @@ export {
 
 export function inferKind(ingredient: Ingredient): IngredientKind {
   if (ingredient.kind) return ingredient.kind;
-  const density = resolveDensity(
-    resolveConversionName(ingredient),
-    ingredient.densityGPerMl
-  );
+  const density = resolveDensity(resolveConversionName(ingredient), ingredient.densityGPerMl);
   if (density) return density.kind;
   const family = unitFamily(ingredient.unit);
   if (family === "volume") return "wet";
@@ -160,11 +147,7 @@ export function convertIngredient(
     };
     if (qtyMax != null) {
       base.quantityMax = roundQuantity(qtyMax, toUnit || "piece");
-      base.displayQuantity = formatQuantityRange(
-        rounded,
-        toUnit || "piece",
-        base.quantityMax
-      );
+      base.displayQuantity = formatQuantityRange(rounded, toUnit || "piece", base.quantityMax);
     }
     return base;
   }
@@ -394,10 +377,7 @@ export function convertIngredient(
     );
   }
 
-  const densityInfo = resolveDensity(
-    resolveConversionName(ingredient),
-    ingredient.densityGPerMl
-  );
+  const densityInfo = resolveDensity(resolveConversionName(ingredient), ingredient.densityGPerMl);
   if (!densityInfo) {
     return {
       quantity: qty,
@@ -465,11 +445,7 @@ function failKeep(ingredient: Ingredient, kind: IngredientKind): ConvertResult {
     quantity: ingredient.quantity,
     quantityMax: ingredient.quantityMax,
     unit,
-    displayQuantity: formatQuantityRange(
-      ingredient.quantity,
-      unit,
-      ingredient.quantityMax
-    ),
+    displayQuantity: formatQuantityRange(ingredient.quantity, unit, ingredient.quantityMax),
     kind,
   };
 }
