@@ -142,6 +142,10 @@ export function EditPage() {
           if (patch.size) next.size = patch.size;
           else delete next.size;
         }
+        if ("notes" in patch) {
+          if (patch.notes) next.notes = patch.notes;
+          else delete next.notes;
+        }
         return next;
       })
     );
@@ -295,6 +299,14 @@ export function EditPage() {
                       updateIngredient(i, { conversionKey: conversionKey ?? null })
                     }
                   />
+                  <label className="advanced-note">
+                    <span>Note</span>
+                    <input
+                      value={ing.notes ?? ""}
+                      placeholder="melted, to serve"
+                      onChange={(e) => updateIngredient(i, { notes: e.target.value || undefined })}
+                    />
+                  </label>
                 </details>
                 <button
                   type="button"

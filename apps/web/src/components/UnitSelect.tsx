@@ -3,6 +3,7 @@ import {
   MASS_UNITS,
   PORTION_UNITS,
   pluralUnitLabel,
+  UNIT_DROPDOWN_UNITS,
   VOLUME_UNITS,
   unitLabel,
 } from "@ladlelink/units";
@@ -10,7 +11,7 @@ import {
 const PRODUCE_SIZES: ProduceSize[] = ["small", "medium", "large"];
 const PRODUCE_SIZE_SET = new Set<string>(PRODUCE_SIZES);
 
-const MEASURE_UNIT_SET = new Set<string>([...VOLUME_UNITS, ...MASS_UNITS, ...PORTION_UNITS, ""]);
+const MEASURE_UNIT_SET = new Set<string>([...UNIT_DROPDOWN_UNITS, ""]);
 
 export function isProduceSize(value: string): value is ProduceSize {
   return PRODUCE_SIZE_SET.has(value);

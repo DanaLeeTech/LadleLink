@@ -6,6 +6,7 @@ import {
   inferConversionKey,
   massUnitToGrams,
   PRODUCE_UNIT_SET,
+  UNIT_DROPDOWN_UNITS,
   unitFamily,
   unitLabel,
   unitPatternAlternation,
@@ -74,6 +75,21 @@ const SIZE_PATTERN = "(small|medium|med|large)";
 const BARE_SEASONING_UNITS =
   "pinch|pinches|dash|dashes|drop|drops|smidgen|smidgens|handful|handfuls|twist|twists|dollop|dollops|knob|knobs";
 const BARE_SEASONING_PATTERN = `((?<![a-zA-Z])(?:${BARE_SEASONING_UNITS})(?![a-zA-Z]))`;
+
+/** Note text that is exactly a unit dropdown label ("to taste", "garnish", "pinch"). */
+const NOTE_UNIT_BY_LABEL = new Map<string, string>();
+for (const unit of UNIT_DROPDOWN_UNITS) {
+  NOTE_UNIT_BY_LABEL.set(unitLabel(unit).toLowerCase(), unit);
+  NOTE_UNIT_BY_LABEL.set(unit.toLowerCase(), unit);
+}
+
+/** "to taste" → to_taste; "chopped, to garnish" → null (only a whole note counts). */
+function unitForStandaloneNote(note: string): string | null {
+  if (!note || note.includes(",")) return null;
+  // "to taste." — recipes end the line with a period
+  const text = note.trim().toLowerCase().replace(/\.$/, "").replace(/\s+/g, " ");
+  return NOTE_UNIT_BY_LABEL.get(text) ?? null;
+}
 
 const NUMBERED_STEP_PREFIX = /^\s*(?:(?:step\s*)?\d+\s*[.):\-–—]\s*(?!\d)|step\s*\d+)/i;
 
@@ -650,6 +666,8 @@ export function parseIngredientLine(line: string): Ingredient {
   const allNotes = cleanNotes(
     [...prep.notes, ...(leadingWon ? prep.leadNotes : []), ing.notes].filter(Boolean).join(", ")
   );
+  const noteUnit = !ing.unit && !ing.quantity ? unitForStandaloneNote(allNotes) : null;
+  if (noteUnit) return { ...ing, unit: noteUnit };
   return allNotes ? { ...ing, notes: allNotes } : ing;
 }
 

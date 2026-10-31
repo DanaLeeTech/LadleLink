@@ -22,6 +22,19 @@ describe("sanitizeRecipe", () => {
     assert.deepEqual(sanitizeRecipe(good), good);
   });
 
+  it("trims ingredient notes and drops an empty one", () => {
+    const withNotes = {
+      ...good,
+      ingredients: [
+        { quantity: 2, unit: "tbsp", name: "butter", notes: "  melted  " },
+        { quantity: 1, unit: "tsp", name: "salt", notes: "   " },
+      ],
+    };
+    const recipe = sanitizeRecipe(withNotes);
+    assert.equal(recipe?.ingredients[0]?.notes, "melted");
+    assert.equal(recipe?.ingredients[1]?.notes, undefined);
+  });
+
   it("rejects recipes missing required fields or with the wrong types", () => {
     const broken = [
       { ...good, id: "" },

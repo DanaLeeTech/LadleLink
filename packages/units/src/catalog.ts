@@ -239,6 +239,13 @@ export const PORTION_UNITS: CanonicalUnit[] = [
   "garnish",
 ];
 
+/** Units shown in the unit dropdown (measure + countable). */
+export const UNIT_DROPDOWN_UNITS: CanonicalUnit[] = [
+  ...VOLUME_UNITS,
+  ...MASS_UNITS,
+  ...PORTION_UNITS,
+];
+
 export const PRODUCE_UNITS: CanonicalUnit[] = [
   "egg",
   "tomato",

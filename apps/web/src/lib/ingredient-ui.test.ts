@@ -110,6 +110,11 @@ describe("quantity display", () => {
     const range: Ingredient = { quantity: 0.5, quantityMax: 1, unit: "cup", name: "cream" };
     assert.equal(formatIngredientPreview(range), "½-1 cup cream");
   });
+
+  it("shows the per-ingredient note in the preview", () => {
+    const butter: Ingredient = { quantity: 2, unit: "tbsp", name: "butter", notes: "melted" };
+    assert.equal(formatIngredientPreview(butter), "2 tbsp butter (melted)");
+  });
 });
 
 describe("formatIngredientLine", () => {

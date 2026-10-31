@@ -276,9 +276,8 @@ describe("comma notes on any ingredient line", () => {
     });
     expect(parseIngredientLine("salt, to taste")).toMatchObject({
       quantity: 0,
-      unit: "",
+      unit: "to_taste",
       name: "salt",
-      notes: "to taste",
     });
   });
 
@@ -290,8 +289,28 @@ describe("comma notes on any ingredient line", () => {
     });
     expect(parseIngredientLine("Salt and pepper, to taste")).toMatchObject({
       quantity: 0,
-      unit: "",
+      unit: "to_taste",
       name: "Salt and pepper",
+    });
+  });
+
+  it("uses the dropdown unit when the whole note is a unit label", () => {
+    expect(parseIngredientLine("Salt, to taste.")).toMatchObject({ unit: "to_taste" });
+    expect(parseIngredientLine("Parsley, garnish")).toMatchObject({ unit: "garnish" });
+    // Multi-segment notes and notes that are not units stay notes
+    expect(parseIngredientLine("fine sea salt, divided, to taste")).toMatchObject({
+      unit: "",
+      notes: "divided, to taste",
+    });
+    expect(parseIngredientLine("Butter, melted")).toMatchObject({ unit: "", notes: "melted" });
+    expect(parseIngredientLine("Parmesan cheese, to serve")).toMatchObject({
+      unit: "",
+      notes: "to serve",
+    });
+    // A measured line keeps its own unit
+    expect(parseIngredientLine("50 g butter, to taste")).toMatchObject({
+      quantity: 50,
+      unit: "g",
       notes: "to taste",
     });
   });

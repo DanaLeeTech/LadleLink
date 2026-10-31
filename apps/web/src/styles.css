@@ -658,6 +658,16 @@ textarea {
   width: 100%;
 }
 
+.measure-advanced .advanced-note {
+  display: grid;
+  gap: 0.25rem;
+  width: 100%;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
 /* Touch targets: ingredient rows are the densest control area on a phone. */
 @media (max-width: 719px) {
   .ingredient-review-row input,

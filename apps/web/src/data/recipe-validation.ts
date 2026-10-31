@@ -142,7 +142,9 @@ function sanitizeIngredient(value: unknown): Ingredient | null {
   }
   const size = value.size;
   if (size === "small" || size === "medium" || size === "large") ingredient.size = size;
-  if (typeof value.notes === "string") ingredient.notes = value.notes;
+  if (typeof value.notes === "string" && value.notes.trim()) {
+    ingredient.notes = value.notes.trim();
+  }
   if (typeof value.conversionKey === "string") ingredient.conversionKey = value.conversionKey;
   const kind = value.kind;
   if (kind === "dry" || kind === "wet" || kind === "other") ingredient.kind = kind;

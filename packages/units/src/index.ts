@@ -43,6 +43,7 @@ export {
   PRODUCE_UNIT_SET,
   UNIT_ALIASES,
   UNIT_ALIAS_GROUPS,
+  UNIT_DROPDOWN_UNITS,
   VOLUME_UNITS,
   isKnownUnit,
   unitLabel,

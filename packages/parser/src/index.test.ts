@@ -250,13 +250,14 @@ describe("parseIngredientLine", () => {
     });
   });
 
-  it("parses bare to-taste lines with a blank quantity", () => {
-    expect(parseIngredientLine("Freshly ground black pepper, to taste")).toMatchObject({
+  it("parses a to-taste tail as the dropdown unit", () => {
+    const parsed = parseIngredientLine("Freshly ground black pepper, to taste");
+    expect(parsed).toMatchObject({
       quantity: 0,
-      unit: "",
+      unit: "to_taste",
       name: "Freshly ground black pepper",
-      notes: "to taste",
     });
+    expect(parsed.notes).toBeUndefined();
   });
 
   it("parses garnish when it is not the leading unit", () => {
@@ -944,11 +945,15 @@ Method
       "salt and pepper",
     ]);
     expect(recipe.ingredients[0]).toMatchObject({ quantity: 1, unit: "cup" });
-    expect(recipe.ingredients[1]).toMatchObject({ quantity: 0, unit: "", notes: "to taste" });
+    expect(recipe.ingredients[1]).toMatchObject({
+      quantity: 0,
+      unit: "to_taste",
+      name: "salt",
+    });
     expect(recipe.ingredients[2]).toMatchObject({
       quantity: 0,
-      unit: "",
-      notes: "to taste",
+      unit: "to_taste",
+      name: "Salt and pepper",
     });
     expect(recipe.ingredients[3]).toMatchObject({
       quantity: 0,

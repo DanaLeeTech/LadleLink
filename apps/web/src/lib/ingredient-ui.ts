@@ -167,6 +167,7 @@ export function formatIngredientPreview(ing: Ingredient): string {
   } else if (ing.name.trim()) {
     parts.push(softenNameCase(pluralProduceName(ing.name.trim(), qtyForPlural)));
   }
+  if (ing.notes) parts.push(`(${ing.notes})`);
 
   let preview = parts.join(" ").trim() || "—";
   // Sentence-case when the line doesn't start with a quantity
