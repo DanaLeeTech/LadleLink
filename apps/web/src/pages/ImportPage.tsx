@@ -418,14 +418,17 @@ export function ImportPage() {
                   />
                   <details className="measure-advanced" open={ing.conversionKey ? true : undefined}>
                     <summary className="measure-advanced-toggle">Advanced</summary>
-                    <MeasureAsSelect
-                      name={ing.name}
-                      conversionKey={ing.conversionKey}
-                      onChange={(conversionKey) =>
-                        updateIngredient(i, { conversionKey: conversionKey ?? null })
-                      }
-                    />
-                    <label className="advanced-note">
+                    <label className="advanced-field">
+                      <span>Measure as</span>
+                      <MeasureAsSelect
+                        name={ing.name}
+                        conversionKey={ing.conversionKey}
+                        onChange={(conversionKey) =>
+                          updateIngredient(i, { conversionKey: conversionKey ?? null })
+                        }
+                      />
+                    </label>
+                    <label className="advanced-field">
                       <span>Note</span>
                       <input
                         value={ing.notes ?? ""}
