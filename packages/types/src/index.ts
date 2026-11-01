@@ -191,6 +191,8 @@ export interface ParsedRecipe {
   tags?: string[];
   notes?: string | null;
   photoUrl?: string | null;
+  /** Every image the page offered, in order (photoUrl is the first). */
+  photoUrlCandidates?: string[];
   sourceUrl: string;
 }
 

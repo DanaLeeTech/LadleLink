@@ -8,6 +8,7 @@ import { isValidServings, ServingsInput, type ServingsValue } from "../component
 import { TemperatureText } from "../components/TemperatureText";
 import { isProduceSize, UnitSelect } from "../components/UnitSelect";
 import { useRepository } from "../data/RepositoryProvider";
+import { isDemoMode } from "../data/demo";
 import { RecipeCardExportModal } from "../components/RecipeCardExportModal";
 import { capitalizeFirst, softenNameCase } from "../lib/ingredient-ui";
 import { sanitizeRecipe } from "../data/recipe-validation";
@@ -286,18 +287,18 @@ export function ReaderPage() {
   }
 
   const activeServings = isValidServings(servings) ? servings : recipe.servings;
+  // The public demo keeps no photos; there is no blank box when a recipe has none.
+  const photo = isDemoMode() ? null : recipe.photoPath || recipe.imageUrl;
 
   return (
     <main className="panel">
-      {recipe.imageUrl && !photoFailed ? (
+      {photo && !photoFailed && (
         <img
           className="recipe-photo"
-          src={recipe.imageUrl}
+          src={photo}
           alt={recipe.title}
           onError={() => setPhotoFailed(true)}
         />
-      ) : (
-        <div className="recipe-photo recipe-photo--placeholder" aria-hidden="true" />
       )}
 
       <div className="hero-block">

@@ -1,7 +1,7 @@
 import * as cheerio from "cheerio";
 import type { ParsedRecipe } from "@ladlelink/types";
 import { parseIngredientLine, parseServings } from "./ingredient-line.js";
-import { resolvePhotoUrl } from "./photo-url.js";
+import { resolvePhotoUrls } from "./photo-url.js";
 
 export function parseMicrodata(html: string, sourceUrl: string): ParsedRecipe | null {
   const $ = cheerio.load(html);
@@ -61,11 +61,16 @@ export function parseMicrodata(html: string, sourceUrl: string): ParsedRecipe | 
   }
 
   const yieldText = recipeEl.find('[itemprop="recipeYield"]').first().text();
-  const photoUrl = resolvePhotoUrl(
-    recipeEl.find('[itemprop="image"]').attr("src") ||
-      recipeEl.find('[itemprop="image"]').attr("content"),
-    sourceUrl
-  );
+  const itempropImages = recipeEl
+    .find('[itemprop="image"]')
+    .toArray()
+    .map((el) => $(el).attr("src") || $(el).attr("content"));
+  const ogImages = $('meta[property="og:image"]')
+    .toArray()
+    .map((el) => $(el).attr("content")?.trim() || "")
+    .filter(Boolean);
+  const photoUrlCandidates = resolvePhotoUrls([...itempropImages, ...ogImages], sourceUrl);
+  const photoUrl = photoUrlCandidates[0] ?? null;
 
   if (!ingredients.length) return null;
 
@@ -76,6 +81,7 @@ export function parseMicrodata(html: string, sourceUrl: string): ParsedRecipe | 
     steps,
     ...(sections.length ? { sections } : {}),
     photoUrl,
+    ...(photoUrlCandidates.length ? { photoUrlCandidates } : {}),
     sourceUrl,
   };
 }

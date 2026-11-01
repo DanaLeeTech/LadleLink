@@ -343,9 +343,37 @@ textarea {
   background: var(--accent-soft);
 }
 
-.recipe-photo--placeholder {
-  background: linear-gradient(135deg, var(--accent-soft), var(--paper-edge));
-  border: 1px dashed var(--line);
+.photo-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.photo-choice {
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: none;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.photo-choice img {
+  display: block;
+  width: 7rem;
+  height: 7rem;
+  object-fit: cover;
+  background: var(--accent-soft);
+}
+
+.photo-choice[aria-pressed="true"] {
+  border-color: var(--accent);
+}
+
+.photo-toolbar {
+  margin: 0;
 }
 
 .toolbar {

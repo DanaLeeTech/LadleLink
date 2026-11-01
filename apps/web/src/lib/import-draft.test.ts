@@ -39,4 +39,28 @@ describe("recipeInputFromDraft", () => {
 
     assert.deepEqual(input.tags, ["chilli", "asian", "dessert"]);
   });
+
+  it("stores an uploaded photo as the local path, not a web address", () => {
+    const parsed = parseRecipeHtml(RECIPE_HTML, "https://example.com/cake");
+    const input = recipeInputFromDraft(
+      { ...parsed, servings: parsed.servings, photoUrl: "/api/photos/abc.jpg" },
+      parsed.ingredients,
+      parsed.steps
+    );
+
+    assert.equal(input.photoPath, "/api/photos/abc.jpg");
+    assert.equal(input.imageUrl, null);
+  });
+
+  it("saves no photo when the reviewer removed it", () => {
+    const parsed = parseRecipeHtml(RECIPE_HTML, "https://example.com/cake");
+    const input = recipeInputFromDraft(
+      { ...parsed, servings: parsed.servings, photoUrl: null },
+      parsed.ingredients,
+      parsed.steps
+    );
+
+    assert.equal(input.photoPath, null);
+    assert.equal(input.imageUrl, null);
+  });
 });

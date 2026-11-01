@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
-import { mkdirSync, readdirSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { mkdirSync, readdirSync, readFileSync, statSync, unlinkSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExportPayload, MeasurementPrefs, Recipe, RecipeInput } from "@ladlelink/types";
 import { DEFAULT_MEASUREMENT_PREFS } from "@ladlelink/types";
@@ -112,7 +112,20 @@ function rowToRecipe(row: RecipeRow): Recipe {
 }
 
 export class RecipeStore {
-  constructor(private db: Database.Database) {}
+  constructor(
+    private db: Database.Database,
+    private photosDir?: string
+  ) {}
+
+  /** Uploaded photos live in photosDir; a web address is never a local file. */
+  private removePhotoFile(photoPath: string | null | undefined): void {
+    if (!this.photosDir || !photoPath?.startsWith("/api/photos/")) return;
+    try {
+      unlinkSync(join(this.photosDir, basename(photoPath)));
+    } catch {
+      // Already gone (or never written); nothing to clean up.
+    }
+  }
 
   list(query?: string, tag?: string): Recipe[] {
     const rows = this.db
@@ -230,11 +243,14 @@ export class RecipeStore {
         source_url: recipe.sourceUrl,
         updated_at: recipe.updatedAt,
       });
+    this.removePhotoFile(existing.photoPath !== recipe.photoPath ? existing.photoPath : null);
     return recipe;
   }
 
   delete(id: string): boolean {
+    const existing = this.get(id);
     const result = this.db.prepare("DELETE FROM recipes WHERE id = ?").run(id);
+    if (result.changes > 0) this.removePhotoFile(existing?.photoPath);
     return result.changes > 0;
   }
 
@@ -323,4 +339,37 @@ export class RecipeStore {
     });
     return { imported: run() };
   }
+}
+
+/**
+ * Delete photos nothing points at — e.g. an upload from the import review that
+ * was never saved. Files younger than a day are kept so an upload made just
+ * before a restart is not pulled out from under the person using it.
+ */
+export function sweepOrphanPhotos(db: Database.Database, photosDir: string): number {
+  const rows = db.prepare("SELECT photo_path, image_url FROM recipes").all() as Array<{
+    photo_path: string | null;
+    image_url: string | null;
+  }>;
+  const referenced = new Set<string>();
+  for (const row of rows) {
+    for (const value of [row.photo_path, row.image_url]) {
+      if (value?.startsWith("/api/photos/")) referenced.add(basename(value));
+    }
+  }
+
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  let removed = 0;
+  for (const file of readdirSync(photosDir)) {
+    if (referenced.has(file)) continue;
+    try {
+      const stat = statSync(join(photosDir, file));
+      if (!stat.isFile() || stat.mtimeMs > cutoff) continue;
+      unlinkSync(join(photosDir, file));
+      removed++;
+    } catch {
+      // A file that vanished mid-sweep is already gone.
+    }
+  }
+  return removed;
 }

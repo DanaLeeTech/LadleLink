@@ -5,6 +5,7 @@ node_modules
 data
 **/dist
 *.tsbuildinfo
+**/*.tsbuildinfo
 .env
 .env.*
 *.log

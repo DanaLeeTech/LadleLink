@@ -2,7 +2,7 @@ import * as cheerio from "cheerio";
 import type { ParsedRecipe, RecipeSection } from "@ladlelink/types";
 import { parseIngredientLine, parseServings } from "./ingredient-line.js";
 import { looksLikeIngredientLine } from "./plaintext.js";
-import { resolvePhotoUrl } from "./photo-url.js";
+import { resolvePhotoUrls } from "./photo-url.js";
 
 /** Page chrome that never holds recipe content. */
 const CHROME = "script, style, noscript, nav, header, footer, aside, [role='navigation']";
@@ -199,11 +199,15 @@ export function parseHeuristic(html: string, sourceUrl: string): ParsedRecipe | 
   const measured = ingredients.items.filter((line) => LOOKS_MEASURED.test(line)).length;
   if (measured < 3 || !steps.items.length) return null;
 
-  const photoUrl = resolvePhotoUrl(
-    $('meta[property="og:image"]').attr("content") ||
-      $("article img, .recipe img, img").first().attr("src"),
-    sourceUrl
-  );
+  const ogImages = $('meta[property="og:image"]')
+    .toArray()
+    .map((el) => $(el).attr("content")?.trim() || "")
+    .filter(Boolean);
+  const contentImgs = $("article img, .recipe img").toArray();
+  const imgRaws = (contentImgs.length ? contentImgs : $("img").toArray())
+    .map((el) => $(el).attr("src"))
+    .filter((src) => src && !/\.svg(\?|$)/i.test(src));
+  const photoUrlCandidates = resolvePhotoUrls([...ogImages, ...imgRaws], sourceUrl);
 
   const sections = [...ingredients.sections, ...steps.sections].filter(
     (section) =>
@@ -215,7 +219,8 @@ export function parseHeuristic(html: string, sourceUrl: string): ParsedRecipe | 
     servings: parseServings(findServingsText($) || 1),
     ingredients: ingredients.items.map(parseIngredientLine),
     steps: steps.items,
-    photoUrl,
+    photoUrl: photoUrlCandidates[0] ?? null,
+    ...(photoUrlCandidates.length ? { photoUrlCandidates } : {}),
     sourceUrl,
   };
   if (sections.length) recipe.sections = sections;

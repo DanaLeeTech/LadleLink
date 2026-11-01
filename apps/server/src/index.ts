@@ -3,8 +3,9 @@ import cors from "cors";
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { openDatabase, RecipeStore, resolvePaths } from "./db/store.js";
+import { openDatabase, RecipeStore, resolvePaths, sweepOrphanPhotos } from "./db/store.js";
 import { authMiddleware } from "./middleware/auth.js";
+import { photosRouter } from "./routes/photos.js";
 import { recipesRouter } from "./routes/recipes.js";
 import { utilRouter } from "./routes/util.js";
 
@@ -16,7 +17,10 @@ const AUTH_TOKEN = process.env.AUTH_TOKEN || undefined;
 
 const paths = resolvePaths(DATA_DIR);
 const db = openDatabase(paths.dbPath);
-const store = new RecipeStore(db);
+const store = new RecipeStore(db, paths.photosDir);
+
+const swept = sweepOrphanPhotos(db, paths.photosDir);
+if (swept) console.log(`Removed ${swept} orphaned photo file(s)`);
 
 const app = express();
 app.use(cors());
@@ -27,6 +31,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api", authMiddleware(AUTH_TOKEN));
+app.use("/api/photos", photosRouter(paths.photosDir));
 app.use("/api/recipes", recipesRouter(store));
 app.use("/api", utilRouter(store));
 
@@ -52,6 +57,14 @@ if (webDist) {
 app.use(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Express only treats a 4-argument handler as error middleware.
   (err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    const status =
+      typeof (err as { status?: unknown })?.status === "number"
+        ? (err as { status: number }).status
+        : 500;
+    if (status >= 400 && status < 500) {
+      res.status(status).json({ error: err instanceof Error ? err.message : "Bad request" });
+      return;
+    }
     console.error(err);
     res.status(500).json({ error: "Internal server error" });
   }

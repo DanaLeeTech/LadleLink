@@ -21,7 +21,7 @@ export {
 export { parseJsonLd } from "./jsonld.js";
 export { parseMicrodata } from "./microdata.js";
 export { parseHeuristic } from "./heuristic.js";
-export { resolvePhotoUrl } from "./photo-url.js";
+export { resolvePhotoUrl, resolvePhotoUrls, MAX_PHOTO_CANDIDATES } from "./photo-url.js";
 export {
   parseRecipeText,
   repairOcrLine,

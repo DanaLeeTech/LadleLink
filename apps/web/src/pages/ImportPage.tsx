@@ -8,7 +8,9 @@ import { QuantityInput } from "../components/QuantityInput";
 import { isValidServings, ServingsInput, type ServingsValue } from "../components/ServingsInput";
 import { StepsTextarea } from "../components/StepsTextarea";
 import { TemperatureFormatHint } from "../components/TemperatureFormatHint";
+import { PhotoPicker } from "../components/PhotoPicker";
 import { useRepository } from "../data/RepositoryProvider";
+import { isDemoMode } from "../data/demo";
 import { formatStepsForEditor, parseStepsFromEditor } from "../lib/steps-text";
 import { mergeStepSections, splitStepsBySection } from "../lib/steps-sections";
 import {
@@ -35,6 +37,7 @@ type StepGroupDraft = { title: string | null; text: string };
 export function ImportPage() {
   const navigate = useNavigate();
   const repo = useRepository();
+  const demo = isDemoMode();
   const [searchParams] = useSearchParams();
   const [mode, setMode] = useState<ImportMode>("url");
   const [url, setUrl] = useState("");
@@ -52,10 +55,12 @@ export function ImportPage() {
   const abortRef = useRef<AbortController | null>(null);
 
   function applyDraft(parsed: ParsedRecipe) {
-    const ingredients = parsed.ingredients.length ? parsed.ingredients : [emptyIngredient()];
-    setDraft({ ...parsed, ingredients });
+    // The public demo keeps no photos at all — not even the imported ones.
+    const clean = demo ? { ...parsed, photoUrl: null, photoUrlCandidates: undefined } : parsed;
+    const ingredients = clean.ingredients.length ? clean.ingredients : [emptyIngredient()];
+    setDraft({ ...clean, ingredients });
     setStepGroups(
-      splitStepsBySection(parsed.steps, parsed.sections).map((group) => ({
+      splitStepsBySection(clean.steps, clean.sections).map((group) => ({
         title: group.title,
         text: formatStepsForEditor(group.steps),
       }))
@@ -386,11 +391,12 @@ export function ImportPage() {
 
       {draft && (
         <div className="form-grid">
-          {draft.photoUrl && (
-            <img
-              src={draft.photoUrl}
-              alt=""
-              style={{ maxWidth: "16rem", borderRadius: "0.75rem" }}
+          {!demo && (
+            <PhotoPicker
+              value={draft.photoUrl ?? null}
+              candidates={draft.photoUrlCandidates}
+              canUpload={!repo.isNative()}
+              onChange={(photoUrl) => setDraft({ ...draft, photoUrl })}
             />
           )}
           <div className="field">

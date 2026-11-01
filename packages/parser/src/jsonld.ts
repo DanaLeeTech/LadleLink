@@ -6,7 +6,7 @@ import {
   parseIngredientLine,
   parseServings,
 } from "./ingredient-line.js";
-import { resolvePhotoUrl } from "./photo-url.js";
+import { resolvePhotoUrls } from "./photo-url.js";
 
 function isRecipeType(type: unknown): boolean {
   if (!type) return false;
@@ -67,34 +67,34 @@ export function instructionsWithSections(value: unknown): {
   return { steps, sections };
 }
 
-/** First usable image URL from a string, ImageObject, or any nesting of them. */
-function imageUrlFrom(value: unknown): string | null {
-  if (typeof value === "string") return value.trim() || null;
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const url = imageUrlFrom(item);
-      if (url) return url;
-    }
-    return null;
+/** Every usable image URL from a string, ImageObject, or any nesting of them. */
+function imageUrlsFrom(value: unknown): string[] {
+  if (typeof value === "string") {
+    const url = value.trim();
+    return url ? [url] : [];
   }
+  if (Array.isArray(value)) return value.flatMap(imageUrlsFrom);
   if (value && typeof value === "object") {
     const obj = value as Record<string, unknown>;
-    const url = imageUrlFrom(obj.url ?? obj.contentUrl ?? obj["@graph"]);
-    if (url) return url;
+    return imageUrlsFrom(obj.url ?? obj.contentUrl ?? obj["@graph"]);
   }
-  return null;
+  return [];
 }
 
 function recipeFromJsonLd(
   obj: Record<string, unknown>,
   sourceUrl: string,
-  fallbackImage: string | null
+  fallbackImages: string[]
 ): ParsedRecipe | null {
   if (!isRecipeType(obj["@type"])) return null;
 
   const ingredientLines = asStringArray(obj.recipeIngredient ?? obj.ingredients);
   const { steps, sections } = instructionsWithSections(obj.recipeInstructions ?? obj.instructions);
-  const photoUrl = resolvePhotoUrl(imageUrlFrom(obj.image) ?? fallbackImage, sourceUrl);
+  const photoUrlCandidates = resolvePhotoUrls(
+    [...imageUrlsFrom(obj.image), ...fallbackImages],
+    sourceUrl
+  );
+  const photoUrl = photoUrlCandidates[0] ?? null;
 
   const title = String(obj.name ?? obj.headline ?? "Untitled recipe").trim();
 
@@ -107,14 +107,23 @@ function recipeFromJsonLd(
     tags: asStringArray(obj.keywords ?? obj.recipeCategory),
     notes: typeof obj.description === "string" ? obj.description : null,
     photoUrl,
+    ...(photoUrlCandidates.length ? { photoUrlCandidates } : {}),
     sourceUrl,
   };
+}
+
+/** All og:image tags; many pages list several crops of the same photo. */
+function ogImages($: cheerio.CheerioAPI): string[] {
+  return $('meta[property="og:image"]')
+    .toArray()
+    .map((el) => $(el).attr("content")?.trim() || "")
+    .filter(Boolean);
 }
 
 export function parseJsonLd(html: string, sourceUrl: string): ParsedRecipe | null {
   const $ = cheerio.load(html);
   // Many sites only publish the hero image as og:image, not in the JSON-LD.
-  const ogImage = $('meta[property="og:image"]').attr("content")?.trim() || null;
+  const fallbackImages = ogImages($);
   const scripts = $('script[type="application/ld+json"]');
   for (const el of scripts.toArray()) {
     const raw = $(el).html();
@@ -123,7 +132,11 @@ export function parseJsonLd(html: string, sourceUrl: string): ParsedRecipe | nul
       const parsed = JSON.parse(raw.replace(/[\u0000-\u0019]+/g, " "));
       for (const node of unwrapGraph(parsed)) {
         if (node && typeof node === "object") {
-          const recipe = recipeFromJsonLd(node as Record<string, unknown>, sourceUrl, ogImage);
+          const recipe = recipeFromJsonLd(
+            node as Record<string, unknown>,
+            sourceUrl,
+            fallbackImages
+          );
           if (recipe && recipe.ingredients.length) return recipe;
         }
       }

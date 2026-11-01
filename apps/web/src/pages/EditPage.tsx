@@ -7,8 +7,11 @@ import { QuantityInput } from "../components/QuantityInput";
 import { ServingsInput, type ServingsValue } from "../components/ServingsInput";
 import { StepsTextarea } from "../components/StepsTextarea";
 import { TemperatureFormatHint } from "../components/TemperatureFormatHint";
+import { PhotoPicker } from "../components/PhotoPicker";
 import { useRepository } from "../data/RepositoryProvider";
+import { isDemoMode } from "../data/demo";
 import { isNotFound } from "../data/repository";
+import { isUploadedPhoto } from "../lib/photo";
 import { formatStepsForEditor, parseStepsFromEditor } from "../lib/steps-text";
 import { splitTags, validateRecipeForm } from "../lib/recipe-form";
 import { useUnsavedChangesWarning } from "../lib/unsaved-changes";
@@ -32,6 +35,8 @@ function snapshot(fields: {
   tagsText: string;
   notes: string;
   sourceUrl: string;
+  photoPath: string | null;
+  imageUrl: string | null;
 }): string {
   return JSON.stringify(fields);
 }
@@ -41,6 +46,7 @@ export function EditPage() {
   const isNew = !id;
   const navigate = useNavigate();
   const repo = useRepository();
+  const demo = isDemoMode();
   const [title, setTitle] = useState("");
   const [servings, setServings] = useState<ServingsValue>(4);
   const [ingredients, setIngredients] = useState<Ingredient[]>([emptyIngredient()]);
@@ -50,6 +56,8 @@ export function EditPage() {
   const [tagsText, setTagsText] = useState("");
   const [notes, setNotes] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
+  const [photoPath, setPhotoPath] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -63,6 +71,8 @@ export function EditPage() {
       tagsText: "",
       notes: "",
       sourceUrl: "",
+      photoPath: null,
+      imageUrl: null,
     })
   );
 
@@ -74,6 +84,8 @@ export function EditPage() {
     tagsText,
     notes,
     sourceUrl,
+    photoPath,
+    imageUrl,
   });
   useUnsavedChangesWarning(current !== baseline);
 
@@ -89,6 +101,8 @@ export function EditPage() {
         const loadedTags = recipe.tags.join(", ");
         const loadedNotes = recipe.notes || "";
         const loadedSource = recipe.sourceUrl || "";
+        const loadedPhotoPath = recipe.photoPath ?? null;
+        const loadedImageUrl = recipe.imageUrl ?? null;
         setTitle(recipe.title);
         setServings(recipe.servings);
         setIngredients(loadedIngredients);
@@ -98,6 +112,8 @@ export function EditPage() {
         setTagsText(loadedTags);
         setNotes(loadedNotes);
         setSourceUrl(loadedSource);
+        setPhotoPath(loadedPhotoPath);
+        setImageUrl(loadedImageUrl);
         setBaseline(
           snapshot({
             title: recipe.title,
@@ -107,6 +123,8 @@ export function EditPage() {
             tagsText: loadedTags,
             notes: loadedNotes,
             sourceUrl: loadedSource,
+            photoPath: loadedPhotoPath,
+            imageUrl: loadedImageUrl,
           })
         );
       })
@@ -193,6 +211,8 @@ export function EditPage() {
       tags: splitTags([tagsText]),
       notes: notes.trim() || null,
       sourceUrl: sourceUrl.trim() || null,
+      photoPath,
+      imageUrl,
     };
     try {
       const recipe = isNew ? await repo.createRecipe(input) : await repo.updateRecipe(id!, input);
@@ -261,6 +281,17 @@ export function EditPage() {
             </p>
           )}
         </div>
+
+        {!demo && (
+          <PhotoPicker
+            value={photoPath || imageUrl}
+            canUpload={!repo.isNative()}
+            onChange={(url) => {
+              setPhotoPath(isUploadedPhoto(url) ? url : null);
+              setImageUrl(url && !isUploadedPhoto(url) ? url : null);
+            }}
+          />
+        )}
 
         <h2 className="section-label">Ingredients</h2>
         <div className="ingredient-col-headers ingredient-col-headers--edit" aria-hidden="true">
