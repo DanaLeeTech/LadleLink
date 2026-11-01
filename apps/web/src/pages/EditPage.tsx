@@ -6,6 +6,7 @@ import { IngredientNameInput, MeasureAsSelect } from "../components/IngredientNa
 import { QuantityInput } from "../components/QuantityInput";
 import { ServingsInput, type ServingsValue } from "../components/ServingsInput";
 import { StepsTextarea } from "../components/StepsTextarea";
+import { TemperatureFormatHint } from "../components/TemperatureFormatHint";
 import { useRepository } from "../data/RepositoryProvider";
 import { isNotFound } from "../data/repository";
 import { formatStepsForEditor, parseStepsFromEditor } from "../lib/steps-text";
@@ -335,7 +336,10 @@ export function EditPage() {
         </button>
 
         <div className="field">
-          <label htmlFor="steps">Steps</label>
+          <div className="field-label">
+            <label htmlFor="steps">Steps</label>
+            <TemperatureFormatHint />
+          </div>
           <StepsTextarea id="steps" rows={10} value={stepsText} onChange={setStepsText} required />
         </div>
 
@@ -345,7 +349,10 @@ export function EditPage() {
         </div>
 
         <div className="field">
-          <label htmlFor="notes">Notes</label>
+          <div className="field-label">
+            <label htmlFor="notes">Notes</label>
+            <TemperatureFormatHint />
+          </div>
           <textarea id="notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
 

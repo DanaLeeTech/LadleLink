@@ -339,6 +339,21 @@ export function SettingsPage() {
         </div>
 
         <div className="field">
+          <label htmlFor="includeKelvin">
+            <input
+              id="includeKelvin"
+              type="checkbox"
+              checked={Boolean(prefs.includeKelvin)}
+              onChange={(e) => setPrefs({ ...prefs, includeKelvin: e.target.checked })}
+            />{" "}
+            Include Kelvin when tapping temperatures
+          </label>
+          <p className="meta">
+            Adds a third tap: °C → °F → K. Temperatures written in K always cycle all three.
+          </p>
+        </div>
+
+        <div className="field">
           <label htmlFor="dryPreferredUnit">Default dry unit</label>
           <select
             id="dryPreferredUnit"

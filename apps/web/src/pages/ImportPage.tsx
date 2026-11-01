@@ -7,6 +7,7 @@ import { IngredientNameInput, MeasureAsSelect } from "../components/IngredientNa
 import { QuantityInput } from "../components/QuantityInput";
 import { isValidServings, ServingsInput, type ServingsValue } from "../components/ServingsInput";
 import { StepsTextarea } from "../components/StepsTextarea";
+import { TemperatureFormatHint } from "../components/TemperatureFormatHint";
 import { useRepository } from "../data/RepositoryProvider";
 import { formatStepsForEditor, parseStepsFromEditor } from "../lib/steps-text";
 import { mergeStepSections, splitStepsBySection } from "../lib/steps-sections";
@@ -497,7 +498,10 @@ export function ImportPage() {
           </button>
 
           <div className="field">
-            <label htmlFor="steps">Steps</label>
+            <div className="field-label">
+              <label htmlFor="steps">Steps</label>
+              <TemperatureFormatHint />
+            </div>
             {stepGroups.map((group, i) => {
               const id = i === 0 ? "steps" : `steps-${i}`;
               return (
@@ -520,7 +524,10 @@ export function ImportPage() {
           </div>
 
           <div className="field">
-            <label htmlFor="notes">Notes</label>
+            <div className="field-label">
+              <label htmlFor="notes">Notes</label>
+              <TemperatureFormatHint />
+            </div>
             <textarea
               id="notes"
               rows={3}

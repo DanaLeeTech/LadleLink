@@ -205,6 +205,11 @@ export interface MeasurementPrefs {
   wetPreferredUnit: CanonicalUnit;
   massSystem: MassSystem;
   volumeSystem: VolumeSystem;
+  /**
+   * Tapping a temperature also cycles through Kelvin (C → F → K).
+   * Off by default (C ⇄ F), except temperatures authored in K, which always cycle all three.
+   */
+  includeKelvin?: boolean;
 }
 
 export const DEFAULT_MEASUREMENT_PREFS: MeasurementPrefs = {

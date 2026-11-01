@@ -5,6 +5,7 @@ import { DEFAULT_MEASUREMENT_PREFS } from "@ladlelink/types";
 import { scaleRecipeIngredients } from "@ladlelink/scaling";
 import { canonicalizeUnit, pluralProduceName, pluralUnitLabel, unitFamily } from "@ladlelink/units";
 import { isValidServings, ServingsInput, type ServingsValue } from "../components/ServingsInput";
+import { TemperatureText } from "../components/TemperatureText";
 import { isProduceSize, UnitSelect } from "../components/UnitSelect";
 import { useRepository } from "../data/RepositoryProvider";
 import { RecipeCardExportModal } from "../components/RecipeCardExportModal";
@@ -200,6 +201,7 @@ export function ReaderPage() {
 
   const sectionTitle = (kind: "ingredients" | "steps", at: number): string | null =>
     recipe?.sections?.find((s) => s.kind === kind && s.at === at)?.title ?? null;
+  const includeKelvin = Boolean(prefs.includeKelvin);
 
   if (pendingDelete) {
     return (
@@ -250,7 +252,9 @@ export function ReaderPage() {
             <h2 className="section-label">
               Step {stepIndex + 1} of {recipe.steps.length}
             </h2>
-            <p className="cooking-step">{step}</p>
+            <p className="cooking-step">
+              <TemperatureText text={step} includeKelvin={includeKelvin} />
+            </p>
             <div className="toolbar">
               <button
                 className="btn secondary"
@@ -306,7 +310,11 @@ export function ReaderPage() {
             </a>
           </p>
         )}
-        {recipe.notes && <p className="lede">{recipe.notes}</p>}
+        {recipe.notes && (
+          <p className="lede">
+            <TemperatureText text={recipe.notes} includeKelvin={includeKelvin} />
+          </p>
+        )}
         {recipe.tags.length > 0 && (
           <ul className="tag-chips" aria-label="Tags">
             {recipe.tags.map((tag) => (
@@ -495,7 +503,9 @@ export function ReaderPage() {
               <h3 className="section-label">{sectionTitle("steps", i)}</h3>
             )}
             <span className="step-num">{i + 1}</span>
-            <span>{step}</span>
+            <span>
+              <TemperatureText text={step} includeKelvin={includeKelvin} />
+            </span>
           </li>
         ))}
       </ol>

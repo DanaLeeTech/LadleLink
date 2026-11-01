@@ -8,6 +8,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Temperatures written in steps or notes (`200c`, `400F`, `200 °C`, `180–200C`, `300K`) are now
+  tappable in the reader and cooking mode: one tap switches between °C and °F, and back. A Settings
+  option adds Kelvin to the cycle; temperatures written in K always cycle all three. A small ⓘ next
+  to the editor's Steps and Notes labels lists the formats.
 - Per-ingredient notes can now be reviewed and edited during import review and in the editor,
   and the row preview shows them (for example "2 tbsp butter (melted)").
 - ESLint and Prettier config, with a `npm run lint` script.
