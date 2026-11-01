@@ -18,5 +18,4 @@ export function normalizeImportUrl(raw: string): string | null {
 }
 
 /** The message shown when the address cannot be used. */
-export const INVALID_IMPORT_URL_MESSAGE =
-  "Enter a web address such as recipetineats.com/butter-chicken/";
+export const INVALID_IMPORT_URL_MESSAGE = "Enter a web address such as example.com/recipe";
