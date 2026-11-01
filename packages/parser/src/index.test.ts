@@ -1136,6 +1136,69 @@ a [J 4
     expect(recipe.steps.join(" ")).toMatch(/Mix everything together.*fridge to set/i);
     expect(recipe.steps.join(" ")).not.toMatch(/\[J|livw rat/i);
   });
+
+  it("finds an Ingredients header with OCR junk in front of it", () => {
+    const recipe = parseRecipeText(
+      `
+No Knead Focaccia | Air Fryer
+@& Ingredients
+1 cup all-purpose flour
+Olives
+Instructions
+Mix everything and bake.
+`.trim()
+    );
+    // "Olives" has no measure: it is only kept because the header marks a real list.
+    expect(recipe.ingredients).toHaveLength(2);
+    expect(recipe.ingredients[0]).toMatchObject({ quantity: 1, unit: "cup" });
+    expect(recipe.ingredients[0].name).toMatch(/all-purpose flour/);
+    expect(recipe.ingredients[1].name).toBe("Olives");
+    expect(recipe.steps).toHaveLength(1);
+  });
+
+  it("treats 'Preparation' with OCR junk in front as the steps header", () => {
+    const recipe = parseRecipeText(
+      `
+Flatbread
+Ingredients
+1 cup flour
+Olives
+®. Preparation
+Mix everything and bake.
+`.trim()
+    );
+    expect(recipe.ingredients).toHaveLength(2);
+    expect(recipe.steps).toEqual(["Mix everything and bake."]);
+  });
+
+  it("keeps a lowercase wrapped step line that ends with a period", () => {
+    const recipe = parseRecipeText(
+      `
+Toast
+Ingredients
+1 slice bread
+Instructions
+Heat a pan until the butter melts and starts to
+foam.
+Serve.
+`.trim()
+    );
+    expect(recipe.steps.join(" ")).toMatch(/starts to foam\./);
+  });
+
+  it("repairs Y2 and V2 fraction misreads", () => {
+    const recipe = parseRecipeText(
+      `
+Bread
+Ingredients
+Y2 cup warm water
+V2 tsp active dry yeast
+Mix.
+`.trim()
+    );
+    expect(recipe.ingredients[0]).toMatchObject({ quantity: 0.5, unit: "cup" });
+    expect(recipe.ingredients[1]).toMatchObject({ quantity: 0.5, unit: "tsp" });
+  });
 });
 
 describe("import reliability", () => {

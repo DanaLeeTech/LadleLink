@@ -15,7 +15,7 @@ import {
   measureSelectValue,
   patchFromMeasureSelect,
 } from "../lib/ingredient-ui";
-import { importRecipeFromImage } from "../lib/recipe-card-import";
+import { importRecipeFromImages } from "../lib/recipe-card-import";
 import { recipeInputFromDraft } from "../lib/import-draft";
 
 const emptyIngredient = (): Ingredient => ({
@@ -26,6 +26,8 @@ const emptyIngredient = (): Ingredient => ({
 
 type ImportDraft = Omit<ParsedRecipe, "servings"> & { servings: ServingsValue };
 type ImportMode = "url" | "text" | "image";
+/** One recipe may be spread across several photos or screenshots. */
+const MAX_IMPORT_IMAGES = 5;
 /** One steps editor per section heading; text is the formatted editor slice. */
 type StepGroupDraft = { title: string | null; text: string };
 
@@ -45,6 +47,7 @@ export function ImportPage() {
   const [importHint, setImportHint] = useState<string | null>(null);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const [pendingSourceUrl, setPendingSourceUrl] = useState<string | null>(null);
+  const [imageNames, setImageNames] = useState<string[]>([]);
   const abortRef = useRef<AbortController | null>(null);
 
   function applyDraft(parsed: ParsedRecipe) {
@@ -122,24 +125,31 @@ export function ImportPage() {
     e.preventDefault();
     const form = e.currentTarget;
     const input = form.elements.namedItem("recipe-image") as HTMLInputElement | null;
-    const file = input?.files?.[0];
-    if (!file) {
+    const files = Array.from(input?.files ?? []);
+    if (!files.length) {
       setError("Choose an image file first.");
       return;
     }
+    const chosen = files.slice(0, MAX_IMPORT_IMAGES);
+    const truncated =
+      files.length > MAX_IMPORT_IMAGES
+        ? `Only the first ${MAX_IMPORT_IMAGES} images were used. `
+        : "";
     setLoading(true);
     setImportHint(null);
     setError(null);
     setDraft(null);
     try {
-      const result = await importRecipeFromImage(file, setLoadingMessage);
+      const result = await importRecipeFromImages(chosen, setLoadingMessage);
       applyDraft(result.recipe);
       if (result.source === "metadata") {
-        setImportHint("Loaded exact recipe data from the image file.");
+        setImportHint(`${truncated}Loaded exact recipe data from the image file.`);
       } else if (result.source === "qr") {
-        setImportHint("Loaded recipe data from the QR code on the image.");
+        setImportHint(`${truncated}Loaded recipe data from the QR code on the image.`);
       } else {
-        setImportHint("Read with OCR — please review ingredients and steps carefully.");
+        const count =
+          chosen.length === 1 ? "Read with OCR" : `Read ${chosen.length} images with OCR`;
+        setImportHint(`${truncated}${count} — please review ingredients and steps carefully.`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Import failed");
@@ -241,8 +251,8 @@ export function ImportPage() {
       <div className="hero-block">
         <h1 className="page-title">Import</h1>
         <p className="lede">
-          Paste a recipe link, recipe text, or an image (photo, screenshot, or LadleLink card). We
-          extract ingredients and steps, then ask you to review before saving.
+          Paste a recipe link, recipe text, or up to 5 images (photos, screenshots, or a LadleLink
+          card). We extract ingredients and steps, then ask you to review before saving.
         </p>
       </div>
 
@@ -323,16 +333,35 @@ export function ImportPage() {
       ) : (
         <form className="form-grid" onSubmit={onParseImage}>
           <div className="field">
-            <label htmlFor="recipe-image">Recipe image</label>
-            <input id="recipe-image" name="recipe-image" type="file" accept="image/*" required />
+            <label htmlFor="recipe-image">Recipe images</label>
+            <input
+              id="recipe-image"
+              name="recipe-image"
+              type="file"
+              accept="image/*"
+              multiple
+              required
+              onChange={(e) =>
+                setImageNames(Array.from(e.currentTarget.files ?? []).map((f) => f.name))
+              }
+            />
             <p className="lede" style={{ marginTop: "0.35rem", fontSize: "0.95rem" }}>
+              Up to {MAX_IMPORT_IMAGES} images for one recipe, read in the order you pick them.
               LadleLink cards restore exactly via embedded data or QR. Other photos use on-device
               OCR.
             </p>
+            {imageNames.length > 0 && (
+              <p className="lede" style={{ fontSize: "0.9rem" }}>
+                {imageNames.length} image{imageNames.length === 1 ? "" : "s"}:{" "}
+                {imageNames.join(", ")}
+              </p>
+            )}
           </div>
           <div className="toolbar">
             <button className="btn" type="submit" disabled={loading}>
-              {loading ? loadingMessage || "Reading…" : "Import image"}
+              {loading
+                ? loadingMessage || "Reading…"
+                : "Import image" + (imageNames.length > 1 ? "s" : "")}
             </button>
           </div>
         </form>

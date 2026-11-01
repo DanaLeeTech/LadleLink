@@ -7,10 +7,11 @@ import {
   stripStepNumber,
 } from "./ingredient-line.js";
 
-/** "Ingredients", "Ingredients:", "Ingredients List", etc. */
-const INGREDIENTS_HEADER = /^ingredients?(?:\s+list)?\b[:\s\-–—]*$/i;
-/** "Instructions", "Method:", "Directions", "Steps", etc. */
-const STEPS_HEADER = /^(instructions?|directions?|method|steps?)\b[:\s\-–—]*$/i;
+/** "Ingredients", "Ingredients:", "Ingredients List", "🧑‍🍳 Ingredients", "@& Ingredients" (OCR). */
+const INGREDIENTS_HEADER = /^(?:[^\p{L}\p{N}]{1,4}\s*)?ingredients?(?:\s+list)?\b[:\s\-–—]*$/iu;
+/** "Instructions", "Method:", "Directions", "Steps", "🍽 Instructions", "®. Preparation" (OCR). */
+const STEPS_HEADER =
+  /^(?:[^\p{L}\p{N}]{1,4}\s*)?(?:instructions?|directions?|method|preparation|steps?)\b[:\s\-–—]*$/iu;
 /** Markdown heading: "## Method" → "Method"; ATX closing hashes are dropped. */
 const MD_HEADING = /^\s*#{1,6}\s+(.+?)(?:\s+#+)?\s*$/;
 const METADATA_LINE =
@@ -49,6 +50,8 @@ export function repairOcrLine(line: string): string {
   s = s.replace(/\b3%\s+/g, "3/4 ");
   s = s.replace(/\b2%\s+/g, "1/2 ");
   s = s.replace(/\b8%\s+/g, "1/8 ");
+  // ½ read as "Y2" / "V2" at the start of a line ("Y2 cup warm water")
+  s = s.replace(/^\s*[YV]\s*2\s+(?=[A-Za-z])/i, "1/2 ");
   // "1tin" / "2cups" → "1 tin" / "2 cups"
   s = s.replace(
     /(\d)(tins?|cups?|tbsp|tbsps?|tsp|tsps?|cans?|jars?|packets?|packages?|oz|lbs?|kg|mg|ml)\b/gi,
@@ -99,8 +102,8 @@ export function isNoiseLine(line: string, fromHeading = false): boolean {
   if (/^#[\w.\s#]+$/.test(t) && t.includes("#")) return true;
   // A word wrapped in Markdown emphasis is a heading/title, not a username
   if (/^[*_]{1,3}[^*_].*[*_]{1,3}$/.test(t)) return false;
-  // Lone Instagram-style username
-  if (!fromHeading && /^[a-z0-9._]{3,30}$/i.test(t) && !LEADING_QTY.test(t)) {
+  // Lone Instagram-style username (a handle never ends in a period; prose does)
+  if (!fromHeading && /^[a-z0-9._]{3,30}$/i.test(t) && !/\.$/.test(t) && !LEADING_QTY.test(t)) {
     if (!/\b(?:cup|tsp|tbsp|ball|balls|mix|bake|recipe|flour|milk|egg|oat|oats)\b/i.test(t)) {
       return true;
     }
@@ -218,8 +221,13 @@ function coalesceStepLines(lines: string[]): string[] {
 
 /**
  * Split body lines into ingredients then steps when there is no Steps header.
+ * With `authoritative` (a real Ingredients header was found) the list runs until a
+ * steps heading or numbered step: quantity-less entries like "Olives" stay ingredients.
  */
-function splitIngredientsAndSteps(body: string[]): {
+function splitIngredientsAndSteps(
+  body: string[],
+  authoritative = false
+): {
   ingredientLines: string[];
   stepLines: string[];
 } {
@@ -229,7 +237,7 @@ function splitIngredientsAndSteps(body: string[]): {
 
   for (const line of body) {
     if (isBlank(line) || INGREDIENTS_HEADER.test(line)) continue;
-    if (isNoiseLine(line)) continue;
+    if (isNoiseLine(line, !inSteps && authoritative)) continue;
     if (METADATA_LINE.test(line) && SERVINGS_LINE.test(line)) continue;
     if (METADATA_LINE.test(line) && !looksLikeIngredientLine(line)) {
       if (!inSteps) continue;
@@ -240,7 +248,10 @@ function splitIngredientsAndSteps(body: string[]): {
         inSteps = true;
         continue;
       }
-      if (isNumberedStep(line) || (!looksLikeIngredientLine(line) && ingredientLines.length > 0)) {
+      if (
+        isNumberedStep(line) ||
+        (!authoritative && !looksLikeIngredientLine(line) && ingredientLines.length > 0)
+      ) {
         inSteps = true;
         stepLines.push(line);
         continue;
@@ -324,12 +335,14 @@ export function parseRecipeText(text: string): ParsedRecipe {
   let stepLines: string[];
 
   if (ingredientsIdx >= 0 && stepsIdx >= 0) {
-    ingredientLines = lines
-      .slice(ingredientsIdx + 1, stepsIdx)
-      .filter(
-        (l) =>
-          !isBlank(l) && !INGREDIENTS_HEADER.test(l) && !isNoiseLine(l) && !METADATA_LINE.test(l)
-      );
+    ingredientLines = lines.slice(ingredientsIdx + 1, stepsIdx).filter(
+      (l) =>
+        !isBlank(l) &&
+        !INGREDIENTS_HEADER.test(l) &&
+        // A real ingredient list keeps short quantity-less entries ("Olives").
+        !isNoiseLine(l, true) &&
+        !METADATA_LINE.test(l)
+    );
     stepLines = coalesceStepLines(
       lines
         .slice(stepsIdx + 1)
@@ -337,7 +350,7 @@ export function parseRecipeText(text: string): ParsedRecipe {
     );
   } else if (ingredientsIdx >= 0) {
     const body = lines.slice(ingredientsIdx + 1);
-    const split = splitIngredientsAndSteps(body);
+    const split = splitIngredientsAndSteps(body, true);
     ingredientLines = split.ingredientLines;
     stepLines = split.stepLines;
   } else {

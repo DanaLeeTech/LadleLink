@@ -170,6 +170,81 @@ function tryParseOcrText(text: string): ParsedRecipe | null {
   }
 }
 
+/** OCR lines that differ only in case, spacing or punctuation still count as the same line. */
+function normalizeOcrLine(line: string): string {
+  return line
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const MAX_STITCH_OVERLAP_LINES = 60;
+/** Status-bar / nav-bar OCR crumbs at the seam before the real overlap starts. */
+const STITCH_SEAM_JUNK_LINES = 3;
+
+function sameOcrLine(a: string, b: string): boolean {
+  return normalizeOcrLine(a) === normalizeOcrLine(b);
+}
+
+/**
+ * Where the next photo's text resumes the previous one: return how much of the
+ * accumulated text to keep and which line of the next text starts the new content.
+ */
+function findStitchOverlap(a: string[], b: string[]): { keepA: number; fromB: number } | null {
+  // Clean overlap: the next text starts exactly on the shared lines.
+  for (let k = Math.min(a.length, b.length, MAX_STITCH_OVERLAP_LINES); k > 0; k--) {
+    let same = true;
+    for (let i = 0; i < k && same; i++) same = sameOcrLine(a[a.length - k + i], b[i]);
+    if (same) return { keepA: a.length, fromB: k };
+  }
+
+  // Noisy seam: junk ahead of the shared run (status bar) and after it (nav bar, cut-off line).
+  let best: { keepA: number; fromB: number; run: number } | null = null;
+  const mostHeadJunk = Math.min(STITCH_SEAM_JUNK_LINES, b.length - 1);
+  for (let fromB = 0; fromB <= mostHeadJunk; fromB++) {
+    for (let keepA = Math.max(0, a.length - MAX_STITCH_OVERLAP_LINES); keepA < a.length; keepA++) {
+      let run = 0;
+      while (
+        keepA + run < a.length &&
+        fromB + run < b.length &&
+        sameOcrLine(a[keepA + run], b[fromB + run])
+      ) {
+        run++;
+      }
+      if (run >= 2 && (!best || run > best.run)) best = { keepA, fromB, run };
+    }
+  }
+  if (best) return { keepA: best.keepA, fromB: best.fromB };
+
+  // A line cut at the bottom of the first photo reappears complete at the top of the next.
+  const cut = normalizeOcrLine(a[a.length - 1] ?? "");
+  if (cut.length >= 20 && normalizeOcrLine(b[0] ?? "").startsWith(cut)) {
+    return { keepA: a.length - 1, fromB: 0 };
+  }
+  return null;
+}
+
+/**
+ * Join OCR texts from consecutive photos of one recipe, dropping the lines the
+ * photos overlap on. Small OCR junk at the seam is tolerated both sides.
+ * Blank OCR lines are dropped: the parser ignores them, and one screenshot may
+ * have a blank between every line while the next has none.
+ */
+export function stitchOcrTexts(texts: string[]): string {
+  let lines: string[] = [];
+  for (const text of texts) {
+    const next = text.split("\n").filter((line) => line.trim());
+    if (!next.length) continue;
+
+    const overlap = lines.length ? findStitchOverlap(lines, next) : null;
+    lines = overlap
+      ? lines.slice(0, overlap.keepA).concat(next.slice(overlap.fromB))
+      : lines.concat(next);
+  }
+  return lines.join("\n");
+}
+
 function pickBestRecipe(candidates: ParsedRecipe[]): ParsedRecipe | null {
   if (!candidates.length) return null;
   return candidates.reduce((best, cur) => {
@@ -273,6 +348,47 @@ export async function importRecipeFromImage(
 
     const fallback = cleanOcrText(texts.find((t) => t.trim()) || "");
     return parseRecipeText(fallback);
+  });
+
+  onProgress?.("Parsing recipe text…");
+  return { recipe, source: "ocr" };
+}
+
+/**
+ * Import one recipe spread across up to 5 images: each image's OCR text is
+ * stitched (overlapped lines dropped) and parsed as one text. A LadleLink card
+ * in any image still wins with its exact recipe data.
+ */
+export async function importRecipeFromImages(
+  files: File[],
+  onProgress?: (message: string) => void
+): Promise<ImageImportResult> {
+  if (!files.length) throw new Error("Choose an image file first.");
+  if (files.length === 1) return importRecipeFromImage(files[0], onProgress);
+
+  for (let i = 0; i < files.length; i++) {
+    const label = `Checking image ${i + 1} of ${files.length} for recipe data…`;
+    onProgress?.(label);
+    const { imageData, pngBytes } = await fileToImageData(files[i]);
+    if (pngBytes) {
+      const fromMeta = extractPngRecipeMetadata(pngBytes);
+      if (fromMeta) {
+        return { recipe: payloadToParsedRecipe(fromMeta), source: "metadata" };
+      }
+    }
+    const fromQr = await tryDecodeQr(imageData);
+    if (fromQr) return { recipe: fromQr, source: "qr" };
+  }
+
+  const recipe = await withOcrWorker(async (recognize) => {
+    const texts: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      onProgress?.(`Reading image ${i + 1} of ${files.length} (OCR)…`);
+      texts.push(cleanOcrText(await recognize(files[i])));
+    }
+    const stitched = stitchOcrTexts(texts);
+    if (!stitched.trim()) throw new Error("No text found in the images");
+    return parseRecipeText(stitched);
   });
 
   onProgress?.("Parsing recipe text…");
