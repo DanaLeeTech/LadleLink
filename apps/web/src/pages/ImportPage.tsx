@@ -20,6 +20,7 @@ import {
 } from "../lib/ingredient-ui";
 import { importRecipeFromImages } from "../lib/recipe-card-import";
 import { recipeInputFromDraft } from "../lib/import-draft";
+import { INVALID_IMPORT_URL_MESSAGE, normalizeImportUrl } from "../lib/import-url";
 
 const emptyIngredient = (): Ingredient => ({
   quantity: 0,
@@ -97,16 +98,26 @@ export function ImportPage() {
 
   useEffect(() => {
     const shared = searchParams.get("url");
-    if (shared) {
-      setMode("url");
-      setUrl(shared);
-      void runUrlImport(shared.trim());
+    if (!shared) return;
+    const target = normalizeImportUrl(shared);
+    setMode("url");
+    setUrl(shared);
+    if (!target) {
+      setError(INVALID_IMPORT_URL_MESSAGE);
+      return;
     }
+    void runUrlImport(target);
   }, [searchParams, repo]);
 
   function onFetch(e: React.FormEvent) {
     e.preventDefault();
-    void runUrlImport(url.trim());
+    const target = normalizeImportUrl(url);
+    if (!target) {
+      setError(INVALID_IMPORT_URL_MESSAGE);
+      return;
+    }
+    setUrl(target);
+    void runUrlImport(target);
   }
 
   function onParseText(e: React.FormEvent) {
@@ -290,7 +301,7 @@ export function ImportPage() {
       </div>
 
       {mode === "url" ? (
-        <form className="toolbar" onSubmit={onFetch}>
+        <form className="toolbar" onSubmit={onFetch} noValidate>
           <input
             className="search-input"
             type="url"
