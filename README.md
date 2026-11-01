@@ -16,11 +16,11 @@ LadleLink is a local-first recipe manager you run yourself — one Docker contai
 
 ## Screenshots
 
-![A roast chicken recipe scaled to 2× servings, with unit pickers, per-ingredient notes, tags and a click-to-convert oven temperature](docs/screenshots/scaled-recipe.png)
+![A roast chicken recipe scaled to 2× servings, with unit pickers, per-ingredient notes, tags and tappable temperatures](docs/screenshots/scaled-recipe.png)
 
 ![Cooking mode with ingredients ticked off and a converted step temperature](docs/screenshots/cooking-mode.png)
 
-![Import review before saving](docs/screenshots/import-review.png)
+![Import review: the page's photos offered as choices, with upload and remove, before saving](docs/screenshots/import-review.png)
 
 ## Your recipes stay on your machine
 
